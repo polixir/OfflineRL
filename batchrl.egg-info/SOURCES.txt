@@ -1,0 +1,7 @@
+README.md
+setup.py
+batchrl.egg-info/PKG-INFO
+batchrl.egg-info/SOURCES.txt
+batchrl.egg-info/dependency_links.txt
+batchrl.egg-info/requires.txt
+batchrl.egg-info/top_level.txt
