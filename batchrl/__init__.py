@@ -1,4 +1,4 @@
-from finfree import algo, data, evaluation, trainer, utils
+from batchrl import algo, data, evaluation, trainer, utils
 
 
 __version__ = "0.0.1"

@@ -1,12 +1,6 @@
-import configparser
+def parse_config(cfg_module):
+    args = [ i for i in dir(cfg_module) if not i.startswith("__")]
+    args = { arg: getattr(cfg_module, arg)  for arg in args}
 
-def parse_config(cfg_path):
-    cfg = configparser.ConfigParser()
-    cfg.read(cfg_path)
-    
-    sections = cfg.sections()
-    
-    for section in sections:
-        options = cfg.options(section)
-        print(options)
+    return args
     
