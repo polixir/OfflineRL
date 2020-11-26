@@ -1,3 +1,0 @@
-gym
-gtimer
-numpy
