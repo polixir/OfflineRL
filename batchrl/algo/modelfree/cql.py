@@ -1,3 +1,6 @@
+# Conservative Q-Learning for Offline Reinforcement Learning
+# https://arxiv.org/abs/2006.04779
+# https://github.com/aviralkumar2907/CQL
 import abc
 import copy
 from collections import OrderedDict
@@ -8,7 +11,7 @@ from torch import nn
 from torch import optim
 from tianshou.data import to_torch
 
-from batchrl.utils.env import get_env_dim
+from batchrl.utils.env import get_env_shape
 from batchrl.utils.net.common import Net
 from batchrl.utils.net.continuous import Critic
 from batchrl.utils.net.tanhpolicy import TanhGaussianPolicy
@@ -18,7 +21,7 @@ def algo_init(args):
     if args["obs_shape"] and args["action_shape"]:
         obs_shape, action_shape = args["obs_shape"], args["action_shape"]
     else:
-        obs_shape, action_shape = get_env_dim(args['task'])
+        obs_shape, action_shape = get_env_shape(args['task'])
         args["obs_shape"], args["action_shape"] = obs_shape, action_shape
     
     net_a = Net(layer_num = args['layer_num'], 
