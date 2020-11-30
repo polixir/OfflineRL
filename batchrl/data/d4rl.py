@@ -4,8 +4,8 @@ import pickle
 import gym
 import d4rl
 import numpy as np
-from tianshou.data import Batch
 
+from batchrl.utils.data import Batch
 from batchrl.data import dataset_dir
 from batchrl.utils.io import save_pkl,load_pkl
         

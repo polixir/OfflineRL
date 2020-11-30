@@ -5,12 +5,10 @@ import numpy as np
 from torch import nn as nn
 from torch.nn import functional as F
 from torch.distributions import Distribution, Normal
-from tianshou.data import Batch
-from tianshou.data import to_torch, to_numpy
 
-#from batchrl.utils.net.continuous import ActorProb
-from tianshou.utils.net.continuous import ActorProb
-
+from batchrl.utils.data import Batch
+from batchrl.utils.dat import to_torch, to_numpy
+from batchrl.utils.net.continuous import ActorProb
 
 
 class TanhNormal(Distribution):

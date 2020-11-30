@@ -3,7 +3,7 @@ import numpy as np
 from torch import nn
 from typing import Any, Dict, List, Tuple, Union, Callable, Optional, Sequence
 
-from tianshou.data import to_torch
+from batchrl.utils.data import to_torch
 
 
 def miniblock(

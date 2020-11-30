@@ -3,7 +3,7 @@ import numpy as np
 from torch import nn
 from typing import Any, Dict, Tuple, Union, Optional, Sequence
 
-from tianshou.data import to_torch, to_torch_as, to_numpy
+from batchrl.utils.data import to_torch, to_torch_as, to_numpy
 
 
 SIGMA_MIN = -20

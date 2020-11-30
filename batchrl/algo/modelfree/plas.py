@@ -10,8 +10,8 @@ import torch.nn.functional as F
 import numpy as np
 from torch import nn
 from torch import optim
-from tianshou.data import to_torch
 
+from batchrl.utils.data import to_torch
 from batchrl.algo.base import BasePolicy
 from batchrl.utils.env import get_env_shape, get_env_action_range
 from batchrl.utils.net.common import Net
