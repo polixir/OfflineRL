@@ -7,7 +7,7 @@ from torch.nn import functional as F
 from torch.distributions import Distribution, Normal
 
 from batchrl.utils.data import Batch
-from batchrl.utils.dat import to_torch, to_numpy
+from batchrl.utils.data import to_torch, to_numpy
 from batchrl.utils.net.continuous import ActorProb
 
 
@@ -95,7 +95,7 @@ class TanhGaussianPolicy(ActorProb):
     MEAN_MAX = 9.0
     
     
-    def get_action(self, obs_np, deterministic=False):
+    def get_action(self, obs_np):
         observation = to_torch(obs_np, torch.float, self.device)
         act = to_numpy(self(obs_np).mode)
         
