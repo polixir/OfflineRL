@@ -11,6 +11,7 @@ from torch import nn
 from torch import optim
 from tianshou.data import to_torch
 
+from batchrl.algo.base import BasePolicy
 from batchrl.utils.env import get_env_shape
 from batchrl.utils.net.common import Net
 from batchrl.utils.net.continuous import Critic
@@ -81,7 +82,7 @@ def algo_init(args):
     }
 
 
-class AlgoTrainer():
+class AlgoTrainer(BasePolicy):
     def __init__(self, algo_init, args):
         self.actor = algo_init["actor"]["net"]
         self.actor_opt = algo_init["actor"]["opt"]
@@ -93,6 +94,8 @@ class AlgoTrainer():
         
         self.critic1_target = copy.deepcopy(self.critic1)
         self.critic2_target = copy.deepcopy(self.critic2)
+        
+        self.args = args
         
         self.device = args["device"]
         self.soft_target_tau = args["soft_target_tau"]
@@ -161,7 +164,7 @@ class AlgoTrainer():
 
     def _get_policy_actions(self, obs, num_actions, network=None):
         obs_temp = obs.unsqueeze(1).repeat(1, num_actions, 1).view(obs.shape[0] * num_actions, obs.shape[1])
-        new_obs_actions, _, _, new_obs_log_pi, *_ = network(
+        new_obs_actions,new_obs_log_pi= network(
             obs_temp, reparameterize=True, return_log_prob=True,
         )
         if not self.discrete:
@@ -169,7 +172,32 @@ class AlgoTrainer():
         else:
             return new_obs_actions
         
-    def train(self, batch):
+    def sample(self, obs, reparameterize=True, return_log_prob=True):
+        log_prob = None
+        tanh_normal = self.actor(obs,reparameterize=reparameterize,)
+
+        if return_log_prob:
+            if reparameterize is True:
+                action, pre_tanh_value = tanh_normal.rsample(
+                    return_pretanh_value=True
+                )
+            else:
+                action, pre_tanh_value = tanh_normal.sample(
+                    return_pretanh_value=True
+                )
+            log_prob = tanh_normal.log_prob(
+                action,
+                pre_tanh_value=pre_tanh_value
+            )
+            log_prob = log_prob.sum(dim=1, keepdim=True)
+        else:
+            if reparameterize is True:
+                action = tanh_normal.rsample()
+            else:
+                action = tanh_normal.sample()
+        return action, log_prob
+        
+    def _train(self, batch):
         self._current_epoch += 1
         batch = to_torch(batch, torch.float, device=self.device)
         rewards = batch.rew
@@ -181,9 +209,7 @@ class AlgoTrainer():
         """
         Policy and Alpha Loss
         """
-        new_obs_actions, policy_mean, policy_log_std, log_pi, *_ = self.actor(
-            obs, reparameterize=True, return_log_prob=True,
-        )
+        new_obs_actions, log_pi = self.sample(obs)
         
         if self.use_automatic_entropy_tuning:
             alpha_loss = -(self.log_alpha * (log_pi + self.target_entropy).detach()).mean()
@@ -220,10 +246,10 @@ class AlgoTrainer():
         q1_pred = self.critic1(obs, actions)
         q2_pred = self.critic2(obs, actions)
         
-        new_next_actions, _, _, new_log_pi, *_ = self.actor(
+        new_next_actions,new_log_pi= self.sample(
             next_obs, reparameterize=True, return_log_prob=True,
         )
-        new_curr_actions, _, _, new_curr_log_pi, *_ = self.actor(
+        new_curr_actions, new_curr_log_pi= self.sample(
             obs, reparameterize=True, return_log_prob=True,
         )
 
@@ -242,9 +268,9 @@ class AlgoTrainer():
         qf2_loss = self.critic_criterion(q2_pred, q_target)
 
         ## add CQL
-        random_actions_tensor = torch.FloatTensor(q2_pred.shape[0] * self.num_random, actions.shape[-1]).uniform_(-1, 1).to(self.device) #.cuda().detach()
-        curr_actions_tensor, curr_log_pis = self._get_policy_actions(obs, num_actions=self.num_random, network=self.actor)
-        new_curr_actions_tensor, new_log_pis = self._get_policy_actions(next_obs, num_actions=self.num_random, network=self.actor)
+        random_actions_tensor = torch.FloatTensor(q2_pred.shape[0] * self.num_random, actions.shape[-1]).uniform_(-1, 1).to(self.device)
+        curr_actions_tensor, curr_log_pis = self._get_policy_actions(obs, num_actions=self.num_random, network=self.sample)
+        new_curr_actions_tensor, new_log_pis = self._get_policy_actions(next_obs, num_actions=self.num_random, network=self.sample)
         q1_rand = self._get_tensor_values(obs, random_actions_tensor, network=self.critic1)
         q2_rand = self._get_tensor_values(obs, random_actions_tensor, network=self.critic2)
         q1_curr_actions = self._get_tensor_values(obs, curr_actions_tensor, network=self.critic1)
@@ -252,12 +278,8 @@ class AlgoTrainer():
         q1_next_actions = self._get_tensor_values(obs, new_curr_actions_tensor, network=self.critic1)
         q2_next_actions = self._get_tensor_values(obs, new_curr_actions_tensor, network=self.critic2)
 
-        cat_q1 = torch.cat(
-            [q1_rand, q1_pred.unsqueeze(1), q1_next_actions, q1_curr_actions], 1
-        )
-        cat_q2 = torch.cat(
-            [q2_rand, q2_pred.unsqueeze(1), q2_next_actions, q2_curr_actions], 1
-        )
+        cat_q1 = torch.cat([q1_rand, q1_pred.unsqueeze(1), q1_next_actions, q1_curr_actions], 1)
+        cat_q2 = torch.cat([q2_rand, q2_pred.unsqueeze(1), q2_next_actions, q2_curr_actions], 1)
 
         if self.min_q_version == 3:
             # importance sammpled version
@@ -305,3 +327,11 @@ class AlgoTrainer():
         """
         self.sync_weight()
         self._n_train_steps_total += 1
+    
+    def train(self, buffer,eval_fn):
+        for epoch in range(1,self.args["max_epoch"]+1):
+            for step in range(1,self.args["steps_per_epoch"]+1):
+                train_data = buffer.sample(self.args["batch_size"])
+                self._train(train_data)
+            print("Epoch: ", epoch)
+            eval_fn(self.args["task"], self.actor)

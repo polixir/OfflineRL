@@ -3,7 +3,7 @@ import numpy as np
 from torch import nn
 from typing import Any, Dict, Tuple, Union, Optional, Sequence
 
-from tianshou.data import to_torch, to_torch_as
+from tianshou.data import to_torch, to_torch_as, to_numpy
 
 
 SIGMA_MIN = -20
@@ -28,7 +28,12 @@ class Actor(nn.Module):
         self.preprocess = preprocess_net
         self.last = nn.Linear(hidden_layer_size, np.prod(action_shape))
         self._max = max_action
-
+        
+    def get_action(self, obs):
+        act, _ = self(obs)
+        
+        return act
+        
     def forward(
         self,
         s: Union[np.ndarray, torch.Tensor],

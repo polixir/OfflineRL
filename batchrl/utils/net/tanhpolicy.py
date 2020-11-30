@@ -6,7 +6,7 @@ from torch import nn as nn
 from torch.nn import functional as F
 from torch.distributions import Distribution, Normal
 from tianshou.data import Batch
-from tianshou.data import to_torch
+from tianshou.data import to_torch, to_numpy
 
 #from batchrl.utils.net.continuous import ActorProb
 from tianshou.utils.net.continuous import ActorProb
@@ -31,6 +31,7 @@ class TanhNormal(Distribution):
         self.normal_std = normal_std
         self.normal = Normal(normal_mean, normal_std)
         self.epsilon = epsilon
+        self.mode = torch.tanh(normal_mean)
 
     def sample_n(self, n, return_pre_tanh_value=False):
         z = self.normal.sample_n(n)
@@ -66,6 +67,8 @@ class TanhNormal(Distribution):
             return torch.tanh(z), z
         else:
             return torch.tanh(z)
+    
+
 
     def rsample(self, return_pretanh_value=False):
         """
@@ -94,8 +97,11 @@ class TanhGaussianPolicy(ActorProb):
     MEAN_MAX = 9.0
     
     
-    def get_actions(self, obs_np, deterministic=False):
-        return self(obs_np, deterministic=deterministic)[0]
+    def get_action(self, obs_np, deterministic=False):
+        observation = to_torch(obs_np, torch.float, self.device)
+        act = to_numpy(self(obs_np).mode)
+        
+        return act
     
     def atanh(self,x):
         one_plus_x = (1 + x).clamp(min=1e-6)
@@ -131,8 +137,7 @@ class TanhGaussianPolicy(ActorProb):
             state=None,
             infor={},
             reparameterize=True,
-            deterministic=False,
-            return_log_prob=False,
+
     ):
         """
         :param obs: Observation
@@ -153,50 +158,5 @@ class TanhGaussianPolicy(ActorProb):
             shape[1] = -1
             log_std = (self.sigma.view(shape) + torch.zeros_like(mu))
             std = log_std.exp()
-
-        log_prob = None
-        entropy = None
-        mean_action_log_prob = None
-        pre_tanh_value = None
-        if deterministic:
-            action = torch.tanh(mean)
-        else:
-            tanh_normal = TanhNormal(mean, std)
-            if return_log_prob:
-                if reparameterize is True:
-                    action, pre_tanh_value = tanh_normal.rsample(
-                        return_pretanh_value=True
-                    )
-                else:
-                    action, pre_tanh_value = tanh_normal.sample(
-                        return_pretanh_value=True
-                    )
-                log_prob = tanh_normal.log_prob(
-                    action,
-                    pre_tanh_value=pre_tanh_value
-                )
-                log_prob = log_prob.sum(dim=1, keepdim=True)
-            else:
-                if reparameterize is True:
-                    action = tanh_normal.rsample()
-                else:
-                    action = tanh_normal.sample()
-
-        return (
-            action, mean, log_std, log_prob, entropy, std,
-            mean_action_log_prob, pre_tanh_value,
-        )
-
-class MakeDeterministic(nn.Module):
-    def __init__(self, stochastic_policy,device,process_fn=torch.nn.Identity):
-        super().__init__()
-        self.stochastic_policy = stochastic_policy
-        self.process_fn = process_fn
-        self.device = device
-
-    def forward(self, batch, state=None, info ={}):
-        observation = to_torch(batch.obs,torch.float,self.device)
-        act =  self.stochastic_policy.get_actions(observation, deterministic=True)
-        res = Batch(logits=None, act=act, state=state, dist=None, log_prob=None)
         
-        return res
+        return TanhNormal(mean, std)

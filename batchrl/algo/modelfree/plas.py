@@ -12,6 +12,7 @@ from torch import nn
 from torch import optim
 from tianshou.data import to_torch
 
+from batchrl.algo.base import BasePolicy
 from batchrl.utils.env import get_env_shape, get_env_action_range
 from batchrl.utils.net.common import Net
 from batchrl.utils.net.continuous import Critic, Actor
@@ -77,8 +78,20 @@ def algo_init(args):
         "critic2" : {"net" : critic2, "opt" : critic2_opt},
     }
 
+class eval_policy():
+    def __init__(self, vae, actor):
+        self.vae = vae
+        self.actor = actor
 
-class AlgoTrainer():
+    def get_action(self, state):
+        #state = to_torch(state, device=self.vae.device)
+        with torch.no_grad():
+            state = torch.FloatTensor(state.reshape(1, -1)).to(self.vae.device)
+            action = self.vae.decode(state, z=self.actor(state)[0])
+        return action.cpu().data.numpy().flatten()
+
+
+class AlgoTrainer(BasePolicy):
     def __init__(self, algo_init, args):
         self.vae = algo_init["vae"]["net"]
         self.vae_opt = algo_init["vae"]["opt"]
@@ -129,11 +142,12 @@ class AlgoTrainer():
             logs['vae_loss'].append(vae_loss)
             logs['recon_loss'].append(recon_loss)
             logs['kl_loss'].append(KL_loss)
-            if (i + 1) % 1 == 0:
+            if (i + 1) % 1000 == 0:
+                print("VAE Epoch :", (i + 1) // 1000)
                 print('Itr ' + str(i+1) + ' Training loss:' + '{:.4}'.format(vae_loss))
 
         
-    def _train_policy(self, replay_buffer):
+    def _train_policy(self, replay_buffer, eval_fn):
         for it in range(self.args["actor_iterations"]):
             batch = replay_buffer.sample(self.args["actor_batch_size"])
             batch = to_torch(batch, torch.float, device=self.args["device"])
@@ -180,27 +194,15 @@ class AlgoTrainer():
             self._sync_weight(self.critic2_target, self.critic2)
             
             if (it + 1) % 1000 == 0:
-                print('Itr ' + str(it+1) + ' Critic loss:' + '{:.4}'.format(critic_loss))
-                
-    def eval():
-        import gym
-        from tianshou.data import Collector
-        from tianshou.trainer import test_episode
-        from tianshou.env import SubprocVectorEnv
-        from batchrl.utils.net.tanhpolicy import MakeDeterministic
-        from batchrl.evaluation.d4rl import d4rl_score
-        
-        eval_policy = MakeDeterministic(self.algo_runner.actor,args["device"])
-        eval_envs = SubprocVectorEnv([lambda: gym.make(args["task"]) for _ in range(10)])
-        eval_collector = Collector(eval_policy, eval_envs)
-
-        result = test_episode(eval_policy, eval_collector, None, epoch=epoch,n_episode=n_episode)
-        
-        score = d4rl_score(self.task, result["rew"], result["len"])
+                print("Policy Epoch :", (it + 1) // 1000)
+                if eval_fn is None:
+                    self.eval()
+                else:
+                    eval_fn(self.args["task"],eval_policy(self.vae, self.actor))
             
         
-    def train(self, replay_buffer):
+    def train(self, replay_buffer, eval_fn=None,):
         self._train_vae(replay_buffer)
-        self._train_policy(replay_buffer)
+        self._train_policy(replay_buffer, eval_fn)
         
         

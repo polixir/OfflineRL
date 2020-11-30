@@ -3,6 +3,7 @@ import d4rl
 import numpy as np
 from tqdm import tqdm
 from d4rl.infos import REF_MIN_SCORE, REF_MAX_SCORE
+from tianshou.data import to_numpy
 
 def d4rl_score(task, rew_mean, len_mean):
     # Output result
@@ -13,22 +14,20 @@ def d4rl_score(task, rew_mean, len_mean):
     print(f'Score: {Score}')
     print(f'Average Length: {len_mean}')
     print('-' * 30)
-    
     return Score
 
 
-def d4rl_eval(task, policy, number_of_runs=100, ):
+def d4rl_eval(task, policy, number_of_runs=10, ):
     env = gym.make(task)
     rewards = []
     episode_lengths = []
     
-    for i in tqdm(range(number_of_runs)):
+    for i in range(number_of_runs):
         obs = env.reset()
         reward = 0
         length = 0
         while True:
-            action = policy.infer(obs[np.newaxis])[0]
-            # action = env.action_space.sample()
+            action = policy.get_action(obs[np.newaxis])[0]
             state, r, done, info = env.step(action)
             reward += r
             length += 1
