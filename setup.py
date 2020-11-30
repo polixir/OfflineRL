@@ -20,6 +20,9 @@ setup(
         "gym",
         "gtimer",
         "numpy",
+        "tianshou",
+        "mjrl",
+        "d4rl",
     ],
     
 )
