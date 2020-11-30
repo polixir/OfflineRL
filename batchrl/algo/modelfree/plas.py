@@ -204,5 +204,3 @@ class AlgoTrainer(BasePolicy):
     def train(self, replay_buffer, eval_fn=None,):
         self._train_vae(replay_buffer)
         self._train_policy(replay_buffer, eval_fn)
-        
-        

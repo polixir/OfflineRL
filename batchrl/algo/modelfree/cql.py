@@ -62,19 +62,7 @@ def algo_init(args):
                      hidden_layer_size = args['hidden_layer_size'],
                     ).to(args['device'])
     critic2_optim = optim.Adam(critic2.parameters(), lr=args['critic_lr'])
-    """
-    critic1_target = copy.deepcopy(critic1)
-    critic2_target = copy.deepcopy(critic2)
-    
-    if args["auto_alpha"]:
-        if args["target_entropy"]:
-            target_entropy = args["target_entropy"]
-        else:
-            target_entropy = -np.prod(action_shape)
-            log_alpha = torch.zeros(1, requires_grad=True, device=args['device'])
-            alpha_optim = optim.Adam([log_alpha], lr=arg['alpha_lr'])
-            alpha = (target_entropy, log_alpha, alpha_optim)
-    """ 
+
     return {
         "actor" : {"net" : actor, "opt" : actor_optim},
         "critic1" : {"net" : critic1, "opt" : critic1_optim},
@@ -172,7 +160,7 @@ class AlgoTrainer(BasePolicy):
         else:
             return new_obs_actions
         
-    def sample(self, obs, reparameterize=True, return_log_prob=True):
+    def forward(self, obs, reparameterize=True, return_log_prob=True):
         log_prob = None
         tanh_normal = self.actor(obs,reparameterize=reparameterize,)
 
@@ -209,7 +197,7 @@ class AlgoTrainer(BasePolicy):
         """
         Policy and Alpha Loss
         """
-        new_obs_actions, log_pi = self.sample(obs)
+        new_obs_actions, log_pi = self.forward(obs)
         
         if self.use_automatic_entropy_tuning:
             alpha_loss = -(self.log_alpha * (log_pi + self.target_entropy).detach()).mean()
@@ -246,10 +234,10 @@ class AlgoTrainer(BasePolicy):
         q1_pred = self.critic1(obs, actions)
         q2_pred = self.critic2(obs, actions)
         
-        new_next_actions,new_log_pi= self.sample(
+        new_next_actions,new_log_pi= self.forward(
             next_obs, reparameterize=True, return_log_prob=True,
         )
-        new_curr_actions, new_curr_log_pi= self.sample(
+        new_curr_actions, new_curr_log_pi= self.forward(
             obs, reparameterize=True, return_log_prob=True,
         )
 
@@ -269,8 +257,8 @@ class AlgoTrainer(BasePolicy):
 
         ## add CQL
         random_actions_tensor = torch.FloatTensor(q2_pred.shape[0] * self.num_random, actions.shape[-1]).uniform_(-1, 1).to(self.device)
-        curr_actions_tensor, curr_log_pis = self._get_policy_actions(obs, num_actions=self.num_random, network=self.sample)
-        new_curr_actions_tensor, new_log_pis = self._get_policy_actions(next_obs, num_actions=self.num_random, network=self.sample)
+        curr_actions_tensor, curr_log_pis = self._get_policy_actions(obs, num_actions=self.num_random, network=self.forward)
+        new_curr_actions_tensor, new_log_pis = self._get_policy_actions(next_obs, num_actions=self.num_random, network=self.forward)
         q1_rand = self._get_tensor_values(obs, random_actions_tensor, network=self.critic1)
         q2_rand = self._get_tensor_values(obs, random_actions_tensor, network=self.critic2)
         q1_curr_actions = self._get_tensor_values(obs, curr_actions_tensor, network=self.critic1)
@@ -328,7 +316,7 @@ class AlgoTrainer(BasePolicy):
         self.sync_weight()
         self._n_train_steps_total += 1
     
-    def train(self, buffer,eval_fn):
+    def train(self, buffer, eval_fn):
         for epoch in range(1,self.args["max_epoch"]+1):
             for step in range(1,self.args["steps_per_epoch"]+1):
                 train_data = buffer.sample(self.args["batch_size"])

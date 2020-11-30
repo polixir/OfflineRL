@@ -17,6 +17,7 @@ def d4rl_score(task, rew_mean, len_mean):
     return Score
 
 
+"""
 def d4rl_eval(task, policy, number_of_runs=10, ):
     env = gym.make(task)
     rewards = []
@@ -39,6 +40,35 @@ def d4rl_eval(task, policy, number_of_runs=10, ):
         rewards.append(reward)
 
     rew_mean = np.mean(rewards)
+    len_mean = np.mean(episode_lengths)
+    
+    d4rl_score(task, rew_mean, len_mean)
+""" 
+def d4rl_eval(task, policy, eval_episodes=10):
+    env = gym.make(task)
+    episode_rewards = []
+    episode_lengths = []
+    for _ in range(eval_episodes):
+        state, done = env.reset(), False
+        rewards = 0
+        lengths = 0
+        while not done:
+
+            state = state[np.newaxis]
+
+            action = policy.get_action(state[np.newaxis])
+
+            action= action[0]
+
+            state, reward, done, _ = env.step(action)
+            rewards += reward
+            lengths += 1
+            
+        episode_rewards.append(rewards)
+        episode_lengths.append(lengths)
+
+
+    rew_mean = np.mean(episode_rewards)
     len_mean = np.mean(episode_lengths)
     
     d4rl_score(task, rew_mean, len_mean)
