@@ -20,10 +20,6 @@ setup(
         "gym",
         "gtimer",
         "numpy",
-        #"git+https://gitee.com/geak/dm_control.git#egg=dm_control",
-        #"git+https://gitee.com/geak/mjrl.git#egg=mjrl",
-        #"git+https://gitee.com/geak/d4rl.git#egg=d4rl",
-        #"git+https://gitee.com/geak/tianshou.git#egg=tianshou",
     ],
     
 )
