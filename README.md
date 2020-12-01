@@ -1,3 +1,10 @@
-# BatchRL
+# BatchRl 
+Batchrl is a repository for Batch RL(batch reinforce learning or offline reinforce learning).
 
-Batch RL
+## Install bactchrl
+
+```
+pip install -r requirments.txt
+
+pip install -e .
+```
