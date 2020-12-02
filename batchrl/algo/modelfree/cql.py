@@ -1,18 +1,15 @@
 # Conservative Q-Learning for Offline Reinforcement Learning
 # https://arxiv.org/abs/2006.04779
 # https://github.com/aviralkumar2907/CQL
-import abc
 import copy
-from collections import OrderedDict
 
 import torch
 import numpy as np
 from torch import nn
 from torch import optim
 
-from batchrl.utils.data import to_torch
 from batchrl.algo.base import BasePolicy
-from batchrl.utils.env import get_env_shape
+from batchrl.utils.data import to_torch
 from batchrl.utils.net.common import Net
 from batchrl.utils.net.continuous import Critic
 from batchrl.utils.net.tanhpolicy import TanhGaussianPolicy
@@ -21,18 +18,19 @@ from batchrl.utils.net.tanhpolicy import TanhGaussianPolicy
 def algo_init(args):
     if args["obs_shape"] and args["action_shape"]:
         obs_shape, action_shape = args["obs_shape"], args["action_shape"]
-    else:
+    elif "task" in args.keys():
+        from batchrl.utils.env import get_env_shape
         obs_shape, action_shape = get_env_shape(args['task'])
         args["obs_shape"], args["action_shape"] = obs_shape, action_shape
+    else:
+        raise NotImplementedError
     
     net_a = Net(layer_num = args['layer_num'], 
                      state_shape = obs_shape, 
-                     device = args['device'],
                      hidden_layer_size = args['hidden_layer_size'])
     
     actor = TanhGaussianPolicy(preprocess_net = net_a,
                                 action_shape = action_shape,
-                                device = args['device'],
                                 hidden_layer_size = args['hidden_layer_size'],
                                 conditioned_sigma = True,
                               ).to(args['device'])
@@ -43,10 +41,8 @@ def algo_init(args):
                   state_shape = obs_shape,  
                   action_shape = action_shape,
                   concat = True, 
-                  device = args['device'],
                   hidden_layer_size = args['hidden_layer_size'])
-    critic1 = Critic(preprocess_net = net_c1, 
-                     device = args['device'], 
+    critic1 = Critic(preprocess_net = net_c1,  
                      hidden_layer_size = args['hidden_layer_size'],
                     ).to(args['device'])
     critic1_optim = optim.Adam(critic1.parameters(), lr=args['critic_lr'])
@@ -55,23 +51,35 @@ def algo_init(args):
                   state_shape = obs_shape,  
                   action_shape = action_shape,
                   concat = True, 
-                  device = args['device'],
                   hidden_layer_size = args['hidden_layer_size'])
     critic2 = Critic(preprocess_net = net_c2, 
-                     device = args['device'], 
                      hidden_layer_size = args['hidden_layer_size'],
                     ).to(args['device'])
     critic2_optim = optim.Adam(critic2.parameters(), lr=args['critic_lr'])
+    
+    if args["use_automatic_entropy_tuning"]:
+        if args["target_entropy"]:
+            target_entropy = args["target_entropy"]
+        else:
+            target_entropy = -np.prod(args["action_shape"]).item() 
+        log_alpha = torch.zeros(1,requires_grad=True, device=args['device'])
+        alpha_optimizer = optim.Adam(
+            [log_alpha],
+            lr=args["actor_lr"],
+        )
 
     return {
         "actor" : {"net" : actor, "opt" : actor_optim},
         "critic1" : {"net" : critic1, "opt" : critic1_optim},
         "critic2" : {"net" : critic2, "opt" : critic2_optim},
+        "log_alpha" : {"net" : log_alpha, "opt" : alpha_optimizer, "target_entropy": target_entropy}
     }
 
 
 class AlgoTrainer(BasePolicy):
     def __init__(self, algo_init, args):
+        self.args = args
+        
         self.actor = algo_init["actor"]["net"]
         self.actor_opt = algo_init["actor"]["opt"]
         
@@ -79,67 +87,19 @@ class AlgoTrainer(BasePolicy):
         self.critic1_opt = algo_init["critic1"]["opt"]
         self.critic2 = algo_init["critic2"]["net"]
         self.critic2_opt = algo_init["critic2"]["opt"]
-        
         self.critic1_target = copy.deepcopy(self.critic1)
         self.critic2_target = copy.deepcopy(self.critic2)
         
-        self.args = args
-        
-        self.device = args["device"]
-        self.soft_target_tau = args["soft_target_tau"]
-        self.use_automatic_entropy_tuning = args["use_automatic_entropy_tuning"]
-        
-        if self.use_automatic_entropy_tuning:
-            if args["target_entropy"]:
-                self.target_entropy = args["target_entropy"]
-            else:
-                self.target_entropy = -np.prod(args["action_shape"]).item() 
-            self.log_alpha = torch.zeros(1,requires_grad=True, device=self.device)
-            self.alpha_optimizer = optim.Adam(
-                [self.log_alpha],
-                lr=args["actor_lr"],
-            )
-        
-        self.with_lagrange = args["with_lagrange"]
-        if self.with_lagrange:
-            self.target_action_gap = lagrange_thresh
-            self.log_alpha_prime = torch.zeros(1,requires_grad=True, device=self.device)
-            self.alpha_prime_optimizer = optimizer_class(
-                [self.log_alpha_prime],
-                lr=args["critic_lr"],
-            )
-
+        if args["use_automatic_entropy_tuning"]:
+            self.log_alpha = algo_init["log_alpha"]["net"]
+            self.alpha_opt = algo_init["log_alpha"]["opt"]
+            self.target_entropy = algo_init["log_alpha"]["target_entropy"]
+            
         self.critic_criterion = nn.MSELoss()
-
-        self.discount = args["discount"]
-        self.reward_scale = args["reward_scale"]
-        self.policy_bc_steps = args["policy_bc_steps"]
-        
-        ## min Q
-        self.temp = args["temp"]
-        self.min_q_version = args["min_q_version"]
-        self.min_q_weight = args["min_q_weight"]
-
-
-        self.max_q_backup = args["max_q_backup"]
-        self.deterministic_backup = args["deterministic_backup"]
-        self.num_random = args["num_random"]
-
-        # For implementation on the 
-        self.discrete = args["discrete"]
         
         self._n_train_steps_total = 0
         self._current_epoch = 0
         
-    def sync_weight(self) -> None:
-        for o, n in zip(
-            self.critic1_target.parameters(), self.critic1.parameters()
-        ):
-            o.data.copy_(o.data * (1.0 - self.soft_target_tau) + n.data * self.soft_target_tau)
-        for o, n in zip(
-            self.critic2_target.parameters(), self.critic2.parameters()
-        ):
-            o.data.copy_(o.data * (1.0 - self.soft_target_tau) + n.data * self.soft_target_tau)
     
     def _get_tensor_values(self, obs, actions, network):
         action_shape = actions.shape[0]
@@ -155,7 +115,7 @@ class AlgoTrainer(BasePolicy):
         new_obs_actions,new_obs_log_pi= network(
             obs_temp, reparameterize=True, return_log_prob=True,
         )
-        if not self.discrete:
+        if not self.args["discrete"]:
             return new_obs_actions, new_obs_log_pi.view(obs.shape[0], num_actions, 1)
         else:
             return new_obs_actions
@@ -187,7 +147,7 @@ class AlgoTrainer(BasePolicy):
         
     def _train(self, batch):
         self._current_epoch += 1
-        batch = to_torch(batch, torch.float, device=self.device)
+        batch = to_torch(batch, torch.float, device=self.args["device"])
         rewards = batch.rew
         terminals = batch.done
         obs = batch.obs
@@ -199,11 +159,11 @@ class AlgoTrainer(BasePolicy):
         """
         new_obs_actions, log_pi = self.forward(obs)
         
-        if self.use_automatic_entropy_tuning:
+        if self.args["use_automatic_entropy_tuning"]:
             alpha_loss = -(self.log_alpha * (log_pi + self.target_entropy).detach()).mean()
-            self.alpha_optimizer.zero_grad()
+            self.alpha_opt.zero_grad()
             alpha_loss.backward()
-            self.alpha_optimizer.step()
+            self.alpha_opt.step()
             alpha = self.log_alpha.exp()
         else:
             alpha_loss = 0
@@ -214,7 +174,7 @@ class AlgoTrainer(BasePolicy):
             self.critic2(obs, new_obs_actions),
         )
 
-        if self._current_epoch < self.policy_bc_steps:
+        if self._current_epoch < self.args["policy_bc_steps"]:
             """
             For the initial few epochs, try doing behaivoral cloning, if needed
             conventionally, there's not much difference in performance with having 20k 
@@ -241,24 +201,24 @@ class AlgoTrainer(BasePolicy):
             obs, reparameterize=True, return_log_prob=True,
         )
 
-        if not self.max_q_backup:
+        if not self.args["max_q_backup"]:
             target_q_values = torch.min(
                 self.critic1_target(next_obs, new_next_actions),
                 self.critic2_target(next_obs, new_next_actions),
             )
             
-            if not self.deterministic_backup:
+            if not self.args["deterministic_backup"]:
                 target_q_values = target_q_values - alpha * new_log_pi
 
-        q_target = self.reward_scale * rewards + (1. - terminals) * self.discount * target_q_values.detach()
+        q_target = self.args["reward_scale"] * rewards + (1. - terminals) * self.args["discount"] * target_q_values.detach()
             
         qf1_loss = self.critic_criterion(q1_pred, q_target)
         qf2_loss = self.critic_criterion(q2_pred, q_target)
 
         ## add CQL
-        random_actions_tensor = torch.FloatTensor(q2_pred.shape[0] * self.num_random, actions.shape[-1]).uniform_(-1, 1).to(self.device)
-        curr_actions_tensor, curr_log_pis = self._get_policy_actions(obs, num_actions=self.num_random, network=self.forward)
-        new_curr_actions_tensor, new_log_pis = self._get_policy_actions(next_obs, num_actions=self.num_random, network=self.forward)
+        random_actions_tensor = torch.FloatTensor(q2_pred.shape[0] * self.args["num_random"], actions.shape[-1]).uniform_(-1, 1).to(self.args["device"])
+        curr_actions_tensor, curr_log_pis = self._get_policy_actions(obs, num_actions=self.args["num_random"], network=self.forward)
+        new_curr_actions_tensor, new_log_pis = self._get_policy_actions(next_obs, num_actions=self.args["num_random"], network=self.forward)
         q1_rand = self._get_tensor_values(obs, random_actions_tensor, network=self.critic1)
         q2_rand = self._get_tensor_values(obs, random_actions_tensor, network=self.critic2)
         q1_curr_actions = self._get_tensor_values(obs, curr_actions_tensor, network=self.critic1)
@@ -269,7 +229,7 @@ class AlgoTrainer(BasePolicy):
         cat_q1 = torch.cat([q1_rand, q1_pred.unsqueeze(1), q1_next_actions, q1_curr_actions], 1)
         cat_q2 = torch.cat([q2_rand, q2_pred.unsqueeze(1), q2_next_actions, q2_curr_actions], 1)
 
-        if self.min_q_version == 3:
+        if self.args["min_q_version"] == 3:
             # importance sammpled version
             random_density = np.log(0.5 ** curr_actions_tensor.shape[-1])
             cat_q1 = torch.cat(
@@ -279,22 +239,12 @@ class AlgoTrainer(BasePolicy):
                 [q2_rand - random_density, q2_next_actions - new_log_pis.detach(), q2_curr_actions - curr_log_pis.detach()], 1
             )
             
-        min_qf1_loss = torch.logsumexp(cat_q1 / self.temp, dim=1,).mean() * self.min_q_weight * self.temp
-        min_qf2_loss = torch.logsumexp(cat_q2 / self.temp, dim=1,).mean() * self.min_q_weight * self.temp
+        min_qf1_loss = torch.logsumexp(cat_q1 / self.args["temp"], dim=1,).mean() * self.args["min_q_weight"] * self.args["temp"]
+        min_qf2_loss = torch.logsumexp(cat_q2 / self.args["temp"], dim=1,).mean() * self.args["min_q_weight"] * self.args["temp"]
                     
         """Subtract the log likelihood of data"""
-        min_qf1_loss = min_qf1_loss - q1_pred.mean() * self.min_q_weight
-        min_qf2_loss = min_qf2_loss - q2_pred.mean() * self.min_q_weight
-        
-        if self.with_lagrange:
-            alpha_prime = torch.clamp(self.log_alpha_prime.exp(), min=0.0, max=1000000.0)
-            min_qf1_loss = alpha_prime * (min_qf1_loss - self.target_action_gap)
-            min_qf2_loss = alpha_prime * (min_qf2_loss - self.target_action_gap)
-
-            self.alpha_prime_optimizer.zero_grad()
-            alpha_prime_loss = (-min_qf1_loss - min_qf2_loss)*0.5 
-            alpha_prime_loss.backward(retain_graph=True)
-            self.alpha_prime_optimizer.step()
+        min_qf1_loss = min_qf1_loss - q1_pred.mean() * self.args["min_q_weight"]
+        min_qf2_loss = min_qf2_loss - q2_pred.mean() * self.args["min_q_weight"]
 
         qf1_loss = qf1_loss + min_qf1_loss
         qf2_loss = qf2_loss + min_qf2_loss
@@ -311,15 +261,29 @@ class AlgoTrainer(BasePolicy):
         self.critic2_opt.step()
 
         """
-        Soft Updates
+        Soft Updates target network
         """
-        self.sync_weight()
+        self._sync_weight(self.critic1_target, self.critic1, self.args["soft_target_tau"])
+        self._sync_weight(self.critic2_target, self.critic2, self.args["soft_target_tau"])
+        
         self._n_train_steps_total += 1
+        
+    def get_model(self):
+        return self.actor
     
-    def train(self, buffer, eval_fn):
+    def save_model(self, model_save_path):
+        torch.save(self.actor, model_save_path)
+    
+    def train(self, buffer, callback_fn):
         for epoch in range(1,self.args["max_epoch"]+1):
             for step in range(1,self.args["steps_per_epoch"]+1):
                 train_data = buffer.sample(self.args["batch_size"])
                 self._train(train_data)
+            
+            res = callback_fn(self.actor)
             print("Epoch: ", epoch)
-            eval_fn(self.args["task"], self.actor)
+            for k,v in res.items():
+                print(k," : ", v)
+        
+        
+        

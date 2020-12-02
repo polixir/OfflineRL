@@ -37,7 +37,6 @@ class Net(nn.Module):
         layer_num: int,
         state_shape: tuple,
         action_shape: Optional[Union[tuple, int]] = 0,
-        device: Union[str, int, torch.device] = "cpu",
         softmax: bool = False,
         concat: bool = False,
         hidden_layer_size: int = 128,
@@ -45,7 +44,6 @@ class Net(nn.Module):
         norm_layer: Optional[Callable[[int], nn.modules.Module]] = None,
     ) -> None:
         super().__init__()
-        self.device = device
         self.dueling = dueling
         self.softmax = softmax
         input_size = np.prod(state_shape)
@@ -87,7 +85,6 @@ class Net(nn.Module):
         info: Dict[str, Any] = {},
     ) -> Tuple[torch.Tensor, Any]:
         """Mapping: s -> flatten -> logits."""
-        s = to_torch(s, device=self.device, dtype=torch.float32)
         s = s.reshape(s.size(0), -1)
         logits = self.model(s)
         if self.dueling is not None:  # Dueling DQN
@@ -109,13 +106,11 @@ class Recurrent(nn.Module):
         layer_num: int,
         state_shape: Sequence[int],
         action_shape: Sequence[int],
-        device: Union[str, int, torch.device] = "cpu",
         hidden_layer_size: int = 128,
     ) -> None:
         super().__init__()
         self.state_shape = state_shape
         self.action_shape = action_shape
-        self.device = device
         self.nn = nn.LSTM(
             input_size=hidden_layer_size,
             hidden_size=hidden_layer_size,
@@ -136,10 +131,6 @@ class Recurrent(nn.Module):
         training mode, s should be with shape ``[bsz, len, dim]``. See the code
         and comment for more detail.
         """
-        s = to_torch(s, device=self.device, dtype=torch.float32)
-        # s [bsz, len, dim] (training) or [bsz, dim] (evaluation)
-        # In short, the tensor's shape in training phase is longer than which
-        # in evaluation phase.
         if len(s.shape) == 2:
             s = s.unsqueeze(-2)
         s = self.fc1(s)

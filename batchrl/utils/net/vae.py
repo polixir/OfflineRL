@@ -8,10 +8,8 @@ class VAE(nn.Module):
                  action_dim, 
                  latent_dim, 
                  max_action,
-                 device,
                  hidden_size=750):
         super(VAE, self).__init__()
-        self.device = device
         
         self.e1 = nn.Linear(state_dim + action_dim, hidden_size)
         self.e2 = nn.Linear(hidden_size, hidden_size)

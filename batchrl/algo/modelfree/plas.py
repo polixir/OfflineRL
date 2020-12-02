@@ -31,19 +31,16 @@ def algo_init(args):
               action_dim = action_shape, 
               latent_dim = action_shape*2, 
               max_action = max_action,
-              device = args["device"],
               hidden_size=args["vae_hidden_size"]).to(args['device'])
     
     vae_opt = optim.Adam(vae.parameters(), lr=args["vae_lr"])
     
     net_a = Net(layer_num = args["layer_num"], 
                 state_shape = obs_shape, 
-                device = args["device"],
                 hidden_layer_size = args["hidden_layer_size"])
     actor = Actor(preprocess_net = net_a,
                  action_shape = action_shape*2,
                  max_action = max_action,
-                 device = args["device"],
                  hidden_layer_size = args["hidden_layer_size"]).to(args['device'])
     actor_opt = optim.Adam(actor.parameters(), lr=args["actor_lr"])
     
@@ -51,10 +48,8 @@ def algo_init(args):
                   state_shape = obs_shape,  
                   action_shape = action_shape,
                   concat = True, 
-                  device = args['device'],
                   hidden_layer_size = args['hidden_layer_size'])
     critic1 = Critic(preprocess_net = net_c1, 
-                     device = args['device'], 
                      hidden_layer_size = args['hidden_layer_size'],
                     ).to(args['device'])
     critic1_opt = optim.Adam(critic1.parameters(), lr=args['critic_lr'])
@@ -63,10 +58,8 @@ def algo_init(args):
                   state_shape = obs_shape,  
                   action_shape = action_shape,
                   concat = True, 
-                  device = args['device'],
                   hidden_layer_size = args['hidden_layer_size'])
     critic2 = Critic(preprocess_net = net_c2, 
-                     device = args['device'], 
                      hidden_layer_size = args['hidden_layer_size'],
                     ).to(args['device'])
     critic2_opt = optim.Adam(critic2.parameters(), lr=args['critic_lr'])
@@ -84,7 +77,6 @@ class eval_policy():
         self.actor = actor
 
     def get_action(self, state):
-        #state = to_torch(state, device=self.vae.device)
         with torch.no_grad():
             state = torch.FloatTensor(state.reshape(1, -1)).to(self.vae.device)
             action = self.vae.decode(state, z=self.actor(state)[0])
@@ -110,12 +102,6 @@ class AlgoTrainer(BasePolicy):
         self.critic2_target = copy.deepcopy(self.critic2)
         
         self.args = args
-        
-    def _sync_weight(self, net_target, net, soft_target_tau = None) -> None:
-        if soft_target_tau is None:
-            soft_target_tau = self.args["soft_target_tau"]
-        for o, n in zip(net_target.parameters(), net.parameters()):
-            o.data.copy_(o.data * (1.0 - soft_target_tau) + n.data * soft_target_tau)
 
         
     def _train_vae_step(self, batch):
@@ -198,9 +184,15 @@ class AlgoTrainer(BasePolicy):
                 if eval_fn is None:
                     self.eval()
                 else:
-                    eval_fn(self.args["task"],eval_policy(self.vae, self.actor))
+                    eval_fn(eval_policy(self.vae, self.actor))
+                    
+    def get_model(self):
+        pass
+    
+    def save_model(self):
+        pass
             
         
-    def train(self, replay_buffer, eval_fn=None,):
+    def train(self, replay_buffer, callback_fn=None):
         self._train_vae(replay_buffer)
-        self._train_policy(replay_buffer, eval_fn)
+        self._train_policy(replay_buffer, callback_fn)

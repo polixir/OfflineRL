@@ -96,7 +96,6 @@ class TanhGaussianPolicy(ActorProb):
     
     
     def get_action(self, obs_np):
-        observation = to_torch(obs_np, torch.float, self.device)
         act = to_numpy(self(obs_np).mode)
         
         return act
@@ -107,8 +106,6 @@ class TanhGaussianPolicy(ActorProb):
         return 0.5*torch.log(one_plus_x/ one_minus_x)
 
     def log_prob(self, obs, actions):
-        obs = to_torch(obs, device=self.device, dtype=torch.float32)
-        actions = to_torch(actions, device=self.device, dtype=torch.float32)
         raw_actions = self.atanh(actions)
         logits, h = self.preprocess(obs)
         
@@ -142,8 +139,7 @@ class TanhGaussianPolicy(ActorProb):
         :param deterministic: If True, do not sample
         :param return_log_prob: If True, return a sample and its log probability
         """
-        s = to_torch(obs, device=self.device, dtype=torch.float32)
-        logits, h = self.preprocess(s, state)
+        logits, h = self.preprocess(obs, state)
         mean = self.mu(logits)
         
         if self._c_sigma:

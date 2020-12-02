@@ -21,7 +21,6 @@ class Actor(nn.Module):
         preprocess_net: nn.Module,
         action_shape: Sequence[int],
         max_action: float = 1.0,
-        device: Union[str, int, torch.device] = "cpu",
         hidden_layer_size: int = 128,
     ) -> None:
         super().__init__()
@@ -55,11 +54,9 @@ class Critic(nn.Module):
     def __init__(
         self,
         preprocess_net: nn.Module,
-        device: Union[str, int, torch.device] = "cpu",
         hidden_layer_size: int = 128,
     ) -> None:
         super().__init__()
-        self.device = device
         self.preprocess = preprocess_net
         self.last = nn.Linear(hidden_layer_size, 1)
 
@@ -70,7 +67,6 @@ class Critic(nn.Module):
         info: Dict[str, Any] = {},
     ) -> torch.Tensor:
         """Mapping: (s, a) -> logits -> Q(s, a)."""
-        s = to_torch(s, device=self.device, dtype=torch.float32)
         s = s.flatten(1)
         if a is not None:
             a = to_torch_as(a, s)
@@ -92,14 +88,12 @@ class ActorProb(nn.Module):
         preprocess_net: nn.Module,
         action_shape: Sequence[int],
         max_action: float = 1.0,
-        device: Union[str, int, torch.device] = "cpu",
         unbounded: bool = False,
         hidden_layer_size: int = 128,
         conditioned_sigma: bool = False,
     ) -> None:
         super().__init__()
         self.preprocess = preprocess_net
-        self.device = device
         self.mu = nn.Linear(hidden_layer_size, np.prod(action_shape))
         self._c_sigma = conditioned_sigma
         if conditioned_sigma:
@@ -143,13 +137,11 @@ class RecurrentActorProb(nn.Module):
         state_shape: Sequence[int],
         action_shape: Sequence[int],
         max_action: float = 1.0,
-        device: Union[str, int, torch.device] = "cpu",
         unbounded: bool = False,
         hidden_layer_size: int = 128,
         conditioned_sigma: bool = False,
     ) -> None:
         super().__init__()
-        self.device = device
         self.nn = nn.LSTM(
             input_size=np.prod(state_shape),
             hidden_size=hidden_layer_size,
@@ -172,7 +164,6 @@ class RecurrentActorProb(nn.Module):
         info: Dict[str, Any] = {},
     ) -> Tuple[Tuple[torch.Tensor, torch.Tensor], Dict[str, torch.Tensor]]:
         """Almost the same as :class:`~tianshou.utils.net.common.Recurrent`."""
-        s = to_torch(s, device=self.device, dtype=torch.float32)
         # s [bsz, len, dim] (training) or [bsz, dim] (evaluation)
         # In short, the tensor's shape in training phase is longer than which
         # in evaluation phase.
@@ -214,13 +205,11 @@ class RecurrentCritic(nn.Module):
         layer_num: int,
         state_shape: Sequence[int],
         action_shape: Sequence[int] = [0],
-        device: Union[str, int, torch.device] = "cpu",
         hidden_layer_size: int = 128,
     ) -> None:
         super().__init__()
         self.state_shape = state_shape
         self.action_shape = action_shape
-        self.device = device
         self.nn = nn.LSTM(
             input_size=np.prod(state_shape),
             hidden_size=hidden_layer_size,
@@ -236,10 +225,6 @@ class RecurrentCritic(nn.Module):
         info: Dict[str, Any] = {},
     ) -> torch.Tensor:
         """Almost the same as :class:`~tianshou.utils.net.common.Recurrent`."""
-        s = to_torch(s, device=self.device, dtype=torch.float32)
-        # s [bsz, len, dim] (training) or [bsz, dim] (evaluation)
-        # In short, the tensor's shape in training phase is longer than which
-        # in evaluation phase.
         assert len(s.shape) == 3
         self.nn.flatten_parameters()
         s, (h, c) = self.nn(s)
