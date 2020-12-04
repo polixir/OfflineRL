@@ -23,6 +23,8 @@ class VAE(nn.Module):
 
         self.max_action = max_action
         self.latent_dim = latent_dim
+        
+        self._actor = None
 
     def forward(self, state, action):
         z = F.relu(self.e1(torch.cat([state, action], 1)))
@@ -51,6 +53,14 @@ class VAE(nn.Module):
         if raw: 
             return a
         return self.max_action * torch.tanh(a)
+    
+    def get_action(self, state):
+        assert self._actor is not None
+        with torch.no_grad():
+            state = state.reshape(1, -1)
+            action = self.decode(state, z=self._actor(state)[0])
+        return action.cpu().data.numpy().flatten()
+        
 
 
 class VAEModule(object):

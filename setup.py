@@ -17,6 +17,8 @@ setup(
     author_email="songyigao@gmail.com",
     python_requires=">=3.7",
     install_requires=[
+        "aim",
+        "fire",
         "gym",
         "gtimer",
         "numpy",

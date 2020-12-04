@@ -131,6 +131,9 @@ class AlgoTrainer(BasePolicy):
             if (i + 1) % 1000 == 0:
                 print("VAE Epoch :", (i + 1) // 1000)
                 print('Itr ' + str(i+1) + ' Training loss:' + '{:.4}'.format(vae_loss))
+                
+                if (i + 1) % 100000 == 0:
+                    torch.save(self.vae, "/tmp/vae_"+str(i)+".pkl") 
 
         
     def _train_policy(self, replay_buffer, eval_fn):
@@ -168,7 +171,7 @@ class AlgoTrainer(BasePolicy):
             # Actor Training
             action_actor,_ = self.actor(obs)
             action_vae = self.vae.decode(obs, z = action_actor)
-            actor_loss = -self.critic1(obs, act).mean()
+            actor_loss = -self.critic1(obs, action_vae).mean()
             
             self.actor.zero_grad()
             actor_loss.backward()
@@ -184,7 +187,10 @@ class AlgoTrainer(BasePolicy):
                 if eval_fn is None:
                     self.eval()
                 else:
-                    eval_fn(eval_policy(self.vae, self.actor))
+                    self.vae._actor = copy.deepcopy(self.actor)
+                    res = eval_fn(self.vae)
+                    for k,v in res.items():
+                        print(k, v)
                     
     def get_model(self):
         pass

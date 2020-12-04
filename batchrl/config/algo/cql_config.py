@@ -1,8 +1,10 @@
 import torch
+from batchrl.utils.exp import select_free_cuda
 
-task = "walker2d-medium-v0"
-dataset_dir = "/home/revive/syg/datasets/walker2d/"
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+task = "halfcheetah-medium-v0"
+dataset_dir = "/home/revive/syg/datasets/walker2d/halfcheetah"
+episode_num = 10
+device = 'cuda'+":"+str(select_free_cuda()) if torch.cuda.is_available() else 'cpu'
 obs_shape = None
 act_shape = None
 

@@ -5,6 +5,7 @@ __pycache__/
 
 # define
 test/
+.aim/
 
 # C extensions
 *.so

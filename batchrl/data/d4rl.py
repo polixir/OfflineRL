@@ -19,26 +19,40 @@ class D4RLBatch(Batch):
         
         return self[indices]
     
-def load_d4rl_data(task):
+def load_d4rl_data(task, episode_num):
     env = gym.make(task)
     if 'random-expert' in task:
         dataset = d4rl.basic_dataset(env)
     else:
         dataset = d4rl.qlearning_dataset(env)
-
+        
+    
+    done_index = np.argwhere(dataset['terminals'] == True)
+    stop_index = len(dataset['terminals']) + 1
+    
+    if episode_num < len(done_index):
+        stop_index = done_index[episode_num-1][0] + 1 
+    episode_slice = slice(0,stop_index)
+    
+    
     buffer = D4RLBatch(
-        obs = dataset['observations'],
-        obs_next = dataset['next_observations'],
-        act = dataset['actions'],
-        rew = np.expand_dims(np.squeeze(dataset['rewards']), 1),
-        done = np.expand_dims(np.squeeze(dataset['terminals']), 1),
+        obs = dataset['observations'][episode_slice],
+        obs_next = dataset['next_observations'][episode_slice],
+        act = dataset['actions'][episode_slice],
+        rew = np.expand_dims(np.squeeze(dataset['rewards'][episode_slice]), 1),
+        done = np.expand_dims(np.squeeze(dataset['terminals'][episode_slice]), 1),
+        #done = np.expand_dims(np.array([0]), 1),
         )
-    print ('Number of terminals on: ', buffer.done.sum())
-
+    if episode_num > 0:
+        assert buffer.done.sum() <= episode_num
+    print('Number of terminals on: ', buffer.done.sum())
+    print("Buffer Length: ", len(buffer))
     return buffer
 
-def load_d4rl_buffer(task):
+def load_d4rl_buffer(task, episode_num=0):
     offline_buffer_file = os.path.join(dataset_dir, task + ".pkl")
+    if episode_num > 0:
+        offline_buffer_file = os.path.join(dataset_dir, task + "_e" + str(episode_num) + ".pkl")
     if not os.path.exists(dataset_dir):
         os.makedirs(dataset_dir)
     if os.path.exists(offline_buffer_file):
@@ -46,7 +60,7 @@ def load_d4rl_buffer(task):
         offline_buffer = load_pkl(offline_buffer_file)
     else:
         print("Load d4rl dataset -> ", task)
-        offline_buffer = load_d4rl_data(task)
+        offline_buffer = load_d4rl_data(task, episode_num)
         print("Save offline buffer -> ", offline_buffer_file)
         save_pkl(offline_buffer, offline_buffer_file)
         

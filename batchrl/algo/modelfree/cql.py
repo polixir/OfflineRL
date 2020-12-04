@@ -78,6 +78,7 @@ def algo_init(args):
 
 class AlgoTrainer(BasePolicy):
     def __init__(self, algo_init, args):
+        
         self.args = args
         
         self.actor = algo_init["actor"]["net"]
@@ -99,6 +100,10 @@ class AlgoTrainer(BasePolicy):
         
         self._n_train_steps_total = 0
         self._current_epoch = 0
+        
+        
+        self.exp_logger = self._init_logger(self.args["exp_name"] if "exp_name" in self.args.keys() else None)
+        self.exp_logger.aim_logger.set_params(self.args, name='hparams')
         
     
     def _get_tensor_values(self, obs, actions, network):
@@ -284,6 +289,4 @@ class AlgoTrainer(BasePolicy):
             print("Epoch: ", epoch)
             for k,v in res.items():
                 print(k," : ", v)
-        
-        
-        
+                self.exp_logger.aim_logger.track(v, name=k.split(" ")[0], epoch=epoch,)

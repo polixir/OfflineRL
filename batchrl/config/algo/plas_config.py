@@ -1,12 +1,13 @@
 import torch
+from batchrl.utils.exp import select_free_cuda
 
 task = "walker2d-medium-v0"
 dataset_dir = "/home/revive/syg/datasets/walker2d/"
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+device = 'cuda'+":"+str(select_free_cuda()) if torch.cuda.is_available() else 'cpu'
 obs_shape = None
 act_shape = None
 
-vae_iterations = 10000
+vae_iterations = 500000
 vae_hidden_size = 750
 vae_batch_size = 100
 

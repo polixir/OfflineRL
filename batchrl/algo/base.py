@@ -1,7 +1,17 @@
+import uuid
 from abc import ABC, abstractmethod
+
+from batchrl.utils.log import exp_logger
 
 
 class BasePolicy(ABC):
+
+    def _init_logger(self, exp_name=None):
+        if exp_name is None:
+            exp_name = uuid.uuid1()
+            
+        return exp_logger(experiment_name = exp_name)
+    
     @abstractmethod
     def train(self, 
               history_buffer,
