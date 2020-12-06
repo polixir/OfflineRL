@@ -10,6 +10,8 @@ act_shape = None
 vae_iterations = 500000
 vae_hidden_size = 750
 vae_batch_size = 100
+#vae_pretrain_model = "/tmp/vae_499999.pkl"
+
 
 layer_num = 3
 actor_batch_size = 100

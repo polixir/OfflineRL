@@ -12,6 +12,7 @@ from loguru import logger
 from batchrl.algo.base import BasePolicy
 from batchrl.utils.data import to_torch
 from batchrl.utils.net.common import Net
+from batchrl.utils.net.vae import VAE
 from batchrl.utils.net.continuous import Critic
 from batchrl.utils.net.tanhpolicy import TanhGaussianPolicy
 
@@ -22,18 +23,28 @@ def algo_init(args):
     if args["obs_shape"] and args["action_shape"]:
         obs_shape, action_shape = args["obs_shape"], args["action_shape"]
     elif "task" in args.keys():
-        from batchrl.utils.env import get_env_shape
+        from batchrl.utils.env import get_env_shape,get_env_action_range
         obs_shape, action_shape = get_env_shape(args['task'])
+        max_action, _ = get_env_action_range(args["task"])
         args["obs_shape"], args["action_shape"] = obs_shape, action_shape
     else:
         raise NotImplementedError
+        
+    vae = VAE(state_dim = obs_shape, 
+              action_dim = action_shape, 
+              latent_dim = action_shape*2, 
+              max_action = max_action,
+              hidden_size=args["vae_hidden_size"]).to(args['device'])
+
+    vae_opt = optim.Adam(vae.parameters(), lr=args["vae_lr"])
+        
     
     net_a = Net(layer_num = args['layer_num'], 
                      state_shape = obs_shape, 
                      hidden_layer_size = args['hidden_layer_size'])
     
     actor = TanhGaussianPolicy(preprocess_net = net_a,
-                                action_shape = action_shape,
+                                action_shape = action_shape*2,
                                 hidden_layer_size = args['hidden_layer_size'],
                                 conditioned_sigma = True,
                               ).to(args['device'])
@@ -72,6 +83,7 @@ def algo_init(args):
         )
 
     return {
+        "vae" : {"net" : vae, "opt" : vae_opt},
         "actor" : {"net" : actor, "opt" : actor_optim},
         "critic1" : {"net" : critic1, "opt" : critic1_optim},
         "critic2" : {"net" : critic2, "opt" : critic2_optim},
@@ -84,6 +96,9 @@ class AlgoTrainer(BasePolicy):
         super(AlgoTrainer, self).__init__(args)
         self.args = args
         
+        self.vae = algo_init["vae"]["net"]
+        self.vae_opt = algo_init["vae"]["opt"]
+        
         self.actor = algo_init["actor"]["net"]
         self.actor_opt = algo_init["actor"]["opt"]
         
@@ -91,6 +106,8 @@ class AlgoTrainer(BasePolicy):
         self.critic1_opt = algo_init["critic1"]["opt"]
         self.critic2 = algo_init["critic2"]["net"]
         self.critic2_opt = algo_init["critic2"]["opt"]
+        
+        self.actor_target = copy.deepcopy(self.actor)
         self.critic1_target = copy.deepcopy(self.critic1)
         self.critic2_target = copy.deepcopy(self.critic2)
         
@@ -148,6 +165,17 @@ class AlgoTrainer(BasePolicy):
             else:
                 action = tanh_normal.sample()
         return action, log_prob
+    
+    def get_actor_action(self, obs_next, no_grad=False):
+        if no_grad:
+            with torch.no_grad():
+                action_next_actor = self.actor_target(obs_next).normal_mean
+                action_next_vae = self.vae.decode(obs_next, z = action_next_actor)
+        else:
+            action_next_actor = self.actor_target(obs_next).normal_mean
+            action_next_vae = self.vae.decode(obs_next, z = action_next_actor)      
+            
+        return action_next_vae
         
     def _train(self, batch):
         self._current_epoch += 1
@@ -156,7 +184,9 @@ class AlgoTrainer(BasePolicy):
         terminals = batch.done
         obs = batch.obs
         actions = batch.act
-        next_obs = batch.obs_next
+        obs_next = batch.obs_next
+        
+        actions = self.get_actor_action(obs, no_grad=True)
 
         """
         Policy and Alpha Loss
@@ -199,7 +229,7 @@ class AlgoTrainer(BasePolicy):
         q2_pred = self.critic2(obs, actions)
         
         new_next_actions,new_log_pi= self.forward(
-            next_obs, reparameterize=True, return_log_prob=True,
+            obs_next, reparameterize=True, return_log_prob=True,
         )
         new_curr_actions, new_curr_log_pi= self.forward(
             obs, reparameterize=True, return_log_prob=True,
@@ -207,14 +237,24 @@ class AlgoTrainer(BasePolicy):
 
         if not self.args["max_q_backup"]:
             target_q_values = torch.min(
-                self.critic1_target(next_obs, new_next_actions),
-                self.critic2_target(next_obs, new_next_actions),
+                self.critic1_target(obs_next, new_next_actions),
+                self.critic2_target(obs_next, new_next_actions),
             )
             
             if not self.args["deterministic_backup"]:
                 target_q_values = target_q_values - alpha * new_log_pi
+                
+        with torch.no_grad():
+            action_next_actor = self.actor_target(obs_next).normal_mean
+            action_next_vae = self.vae.decode(obs_next, z = action_next_actor)
 
-        q_target = self.args["reward_scale"] * rewards + (1. - terminals) * self.args["discount"] * target_q_values.detach()
+            target_q1 = self.critic1_target(obs_next, action_next_vae)
+            target_q2 = self.critic2_target(obs_next, action_next_vae)
+
+            target_q = self.args["lmbda"] * torch.min(target_q1, target_q2) + (1 - self.args["lmbda"]) * torch.max(target_q1, target_q2)
+            q_target = rew + (1 - done) * self.args["discount"] * target_q
+
+        #q_target = self.args["reward_scale"] * rewards + (1. - terminals) * self.args["discount"] * target_q_values.detach()
             
         qf1_loss = self.critic_criterion(q1_pred, q_target)
         qf2_loss = self.critic_criterion(q2_pred, q_target)
@@ -222,7 +262,7 @@ class AlgoTrainer(BasePolicy):
         ## add CQL
         random_actions_tensor = torch.FloatTensor(q2_pred.shape[0] * self.args["num_random"], actions.shape[-1]).uniform_(-1, 1).to(self.args["device"])
         curr_actions_tensor, curr_log_pis = self._get_policy_actions(obs, num_actions=self.args["num_random"], network=self.forward)
-        new_curr_actions_tensor, new_log_pis = self._get_policy_actions(next_obs, num_actions=self.args["num_random"], network=self.forward)
+        new_curr_actions_tensor, new_log_pis = self._get_policy_actions(obs_next, num_actions=self.args["num_random"], network=self.forward)
         q1_rand = self._get_tensor_values(obs, random_actions_tensor, network=self.critic1)
         q2_rand = self._get_tensor_values(obs, random_actions_tensor, network=self.critic2)
         q1_curr_actions = self._get_tensor_values(obs, curr_actions_tensor, network=self.critic1)
@@ -267,6 +307,7 @@ class AlgoTrainer(BasePolicy):
         """
         Soft Updates target network
         """
+        self._sync_weight(self.actor_target, self.actor, self.args["soft_target_tau"])
         self._sync_weight(self.critic1_target, self.critic1, self.args["soft_target_tau"])
         self._sync_weight(self.critic2_target, self.critic2, self.args["soft_target_tau"])
         
@@ -279,6 +320,8 @@ class AlgoTrainer(BasePolicy):
         torch.save(self.actor, model_save_path)
     
     def train(self, buffer, callback_fn):
+        self.vae = torch.load("/tmp/vae_499999.pkl").to(self.args["device"])
+        self.vae.eval()
         for epoch in range(1,self.args["max_epoch"]+1):
             for step in range(1,self.args["steps_per_epoch"]+1):
                 train_data = buffer.sample(self.args["batch_size"])

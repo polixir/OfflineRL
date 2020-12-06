@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 class VAE(nn.Module):
     def __init__(self, 
                  state_dim, 
@@ -56,6 +57,7 @@ class VAE(nn.Module):
     
     def get_action(self, state):
         assert self._actor is not None
+        #print(next(self._actor.parameters())[0][0])
         with torch.no_grad():
             state = state.reshape(1, -1)
             action = self.decode(state, z=self._actor(state)[0])
@@ -107,3 +109,4 @@ class VAEModule(object):
 
     def load(self, filename, directory):
         self.vae.load_state_dict(torch.load('%s/%s_vae.pth' % (directory, filename), map_location=device))
+        

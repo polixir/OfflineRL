@@ -1,6 +1,8 @@
 import os
+import uuid
 import random
 
+import aim
 import torch
 import numpy as np
 
@@ -18,5 +20,13 @@ def select_free_cuda():
     os.system('nvidia-smi -q -d Memory |grep -A4 GPU|grep Free >tmp')
     memory_gpu = [int(x.split()[2]) for x in open('tmp', 'r').readlines()]
     os.system('rm tmp')  # 删除临时生成的 tmp 文件
-    
+
+    import uuid
     return np.argmax(memory_gpu)
+
+
+
+def init_exp_logger(experiment_name=None,flush_frequency=1):       
+    aim_logger = aim.Session(experiment=experiment_name, flush_frequency=flush_frequency)
+
+    return aim_logger

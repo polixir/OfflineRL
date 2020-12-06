@@ -6,27 +6,34 @@ import copy
 from collections import OrderedDict
 
 import torch
-import torch.nn.functional as F
 import numpy as np
 from torch import nn
 from torch import optim
+from loguru import logger
+import torch.nn.functional as F
 
 from batchrl.utils.data import to_torch
 from batchrl.algo.base import BasePolicy
-from batchrl.utils.env import get_env_shape, get_env_action_range
 from batchrl.utils.net.common import Net
-from batchrl.utils.net.continuous import Critic, Actor
 from batchrl.utils.net.vae import VAE
+from batchrl.utils.net.continuous import Critic, Actor
+
 
 
 def algo_init(args):
+    logger.info('Run algo_init function')
+    
     if args["obs_shape"] and args["action_shape"]:
         obs_shape, action_shape = args["obs_shape"], args["action_shape"]
-    else:
-        obs_shape, action_shape = get_env_shape(args["task"])
+    elif "task" in args.keys():
+        from batchrl.utils.env import get_env_shape, get_env_action_range
+        obs_shape, action_shape = get_env_shape(args['task'])
+        max_action, _ = get_env_action_range(args["task"])
         args["obs_shape"], args["action_shape"] = obs_shape, action_shape
+    else:
+        raise NotImplementedError
         
-    max_action, _ = get_env_action_range(args["task"])
+    
     vae = VAE(state_dim = obs_shape, 
               action_dim = action_shape, 
               latent_dim = action_shape*2, 
@@ -35,6 +42,7 @@ def algo_init(args):
     
     vae_opt = optim.Adam(vae.parameters(), lr=args["vae_lr"])
     
+
     net_a = Net(layer_num = args["layer_num"], 
                 state_shape = obs_shape, 
                 hidden_layer_size = args["hidden_layer_size"])
@@ -42,6 +50,8 @@ def algo_init(args):
                  action_shape = action_shape*2,
                  max_action = max_action,
                  hidden_layer_size = args["hidden_layer_size"]).to(args['device'])
+
+    
     actor_opt = optim.Adam(actor.parameters(), lr=args["actor_lr"])
     
     net_c1 = Net(layer_num = args['layer_num'],
@@ -85,6 +95,8 @@ class eval_policy():
 
 class AlgoTrainer(BasePolicy):
     def __init__(self, algo_init, args):
+        super(AlgoTrainer, self).__init__(args)
+        
         self.vae = algo_init["vae"]["net"]
         self.vae_opt = algo_init["vae"]["opt"]
         
@@ -129,11 +141,10 @@ class AlgoTrainer(BasePolicy):
             logs['recon_loss'].append(recon_loss)
             logs['kl_loss'].append(KL_loss)
             if (i + 1) % 1000 == 0:
-                print("VAE Epoch :", (i + 1) // 1000)
-                print('Itr ' + str(i+1) + ' Training loss:' + '{:.4}'.format(vae_loss))
-                
-                if (i + 1) % 100000 == 0:
-                    torch.save(self.vae, "/tmp/vae_"+str(i)+".pkl") 
+                logger.info('VAE Epoch : {}, Loss : {:.4}', (i + 1) // 1000, vae_loss)
+
+        logger.info('Save VAE Model -> {}', "/tmp/vae_"+str(i)+".pkl")
+        #torch.save(self.vae, "/tmp/vae_"+str(i)+".pkl") 
 
         
     def _train_policy(self, replay_buffer, eval_fn):
@@ -183,14 +194,19 @@ class AlgoTrainer(BasePolicy):
             self._sync_weight(self.critic2_target, self.critic2)
             
             if (it + 1) % 1000 == 0:
-                print("Policy Epoch :", (it + 1) // 1000)
                 if eval_fn is None:
-                    self.eval()
+                    self.eval_policy()
                 else:
                     self.vae._actor = copy.deepcopy(self.actor)
                     res = eval_fn(self.vae)
-                    for k,v in res.items():
-                        print(k, v)
+                    self.log_res((it + 1) // 1000, res)
+                        
+    def select_action(self,state):
+        with torch.no_grad():
+            state = torch.FloatTensor(state.reshape(1, -1)).to(self.args["device"])
+            action = self.vae.decode(state, z=self.actor(state)[0])
+        return action.cpu().data.numpy().flatten()
+    
                     
     def get_model(self):
         pass
@@ -200,5 +216,11 @@ class AlgoTrainer(BasePolicy):
             
         
     def train(self, replay_buffer, callback_fn=None):
-        self._train_vae(replay_buffer)
+        """
+        if self.args["vae_pretrain_model"]:
+            self.vae = torch.load("/tmp/vae_499999.pkl").to(self.args["device"])
+        else:
+            self._train_vae(replay_buffer)  
+        """
+        self._train_vae(replay_buffer) 
         self._train_policy(replay_buffer, callback_fn)

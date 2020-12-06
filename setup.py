@@ -19,6 +19,7 @@ setup(
     install_requires=[
         "aim",
         "fire",
+        "loguru",
         "gym",
         "gtimer",
         "numpy",

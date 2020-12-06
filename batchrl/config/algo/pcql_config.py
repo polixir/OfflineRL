@@ -12,6 +12,13 @@ max_epoch = 200
 steps_per_epoch = 1000
 policy_bc_steps = 40000
 
+vae_iterations = 500000
+vae_hidden_size = 750
+vae_batch_size = 100
+vae_lr = 1e-4
+
+lmbda = 0.75
+
 batch_size = 256
 hidden_layer_size = 256
 layer_num = 3

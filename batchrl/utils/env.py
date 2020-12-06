@@ -1,6 +1,11 @@
 import gym
 import d4rl
 
+def get_env(task):
+    env = gym.make(task)
+    
+    return env
+
 def get_env_shape(task):
     env = gym.make(task)
     obs_dim = env.observation_space.low.size
