@@ -8,3 +8,9 @@ pip install -r requirments.txt
 
 pip install -e .
 ```
+
+## Example
+
+```
+python examples/test.py --algo_name=cql --exp_name=halfcheetah-medium-v0
+```
