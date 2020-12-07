@@ -26,3 +26,10 @@ discount = 0.99
 
 max_latent_action = 2 
 phi = 0.05
+
+#tune
+params_tune = {
+    "actor_lr" : {"type" : "continuous", "value":[1E-4, 1E-3]},
+    "vae_lr" : {"type" : "continuous", "value":[1E-4, 1E-3]},
+    "lmbda" :{"type": "discrete", "value":[0.0, 0.25, 0.5, 0.75, 1.0]},
+}

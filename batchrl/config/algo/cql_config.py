@@ -39,3 +39,10 @@ max_q_backup=False
 deterministic_backup=False
 
 discrete = False
+
+#tune
+params_tune = {
+    "actor_lr" : {"type" : "continuous", "value":[1E-4, 1E-3]},
+    "layer_num" :{"type": "discrete", "value":[2, 3, 4]},
+    "use_automatic_entropy_tuning" : {"type":"grid", "value":[True, False]},
+}
