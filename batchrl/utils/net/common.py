@@ -1,9 +1,10 @@
 import torch
 import numpy as np
 from torch import nn
+from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Tuple, Union, Callable, Optional, Sequence
 
-from batchrl.utils.data import to_torch
+from batchrl.utils.data import to_torch, to_numpy, to_array_as
 
 
 def miniblock(
@@ -18,6 +19,18 @@ def miniblock(
     ret += [nn.ReLU(inplace=True)]
     return ret
 
+
+class BasePolicy(ABC):
+    @abstractmethod 
+    def policy_infer(self, obs):
+        pass
+    
+    def get_action(self, obs):
+        obs_tensor = to_torch(obs, device=next(self.parameters()).device, dtype=torch.float32)
+        act = to_array_as(self.policy_infer(obs_tensor), obs)
+        
+        return act
+    
 
 class Net(nn.Module):
     """Simple MLP backbone.

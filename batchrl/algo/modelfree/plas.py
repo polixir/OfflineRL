@@ -198,14 +198,8 @@ class AlgoTrainer(BasePolicy):
                     self.eval_policy()
                 else:
                     self.vae._actor = copy.deepcopy(self.actor)
-                    res = eval_fn(self.vae)
+                    res = eval_fn(self.get_policy())
                     self.log_res((it + 1) // 1000, res)
-                        
-    def select_action(self,state):
-        with torch.no_grad():
-            state = torch.FloatTensor(state.reshape(1, -1)).to(self.args["device"])
-            action = self.vae.decode(state, z=self.actor(state)[0])
-        return action.cpu().data.numpy().flatten()
     
                     
     def get_model(self):
@@ -213,8 +207,11 @@ class AlgoTrainer(BasePolicy):
     
     def save_model(self):
         pass
+    
+    def get_policy(self):
+        self.vae._actor = copy.deepcopy(self.actor)
+        return self.vae
             
-        
     def train(self, replay_buffer, callback_fn=None):
         """
         if self.args["vae_pretrain_model"]:

@@ -40,7 +40,7 @@ class BasePolicy(ABC):
         pass
     
     @abstractmethod
-    def get_model(self,):
+    def get_policy(self,):
         pass
     
     

@@ -7,7 +7,7 @@ from torch.nn import functional as F
 from torch.distributions import Distribution, Normal
 
 from batchrl.utils.data import Batch
-from batchrl.utils.data import to_torch, to_numpy
+from batchrl.utils.net.common import BasePolicy
 from batchrl.utils.net.continuous import ActorProb
 
 
@@ -88,17 +88,11 @@ class TanhNormal(Distribution):
             return torch.tanh(z)
         
 
-class TanhGaussianPolicy(ActorProb):
+class TanhGaussianPolicy(ActorProb, BasePolicy):
     LOG_SIG_MAX = 2
     LOG_SIG_MIN = -5
     MEAN_MIN = -9.0
     MEAN_MAX = 9.0
-    
-    
-    def get_action(self, obs_np):
-        act = to_numpy(self(obs_np).mode)
-        
-        return act
     
     def atanh(self,x):
         one_plus_x = (1 + x).clamp(min=1e-6)
@@ -154,3 +148,6 @@ class TanhGaussianPolicy(ActorProb):
             std = log_std.exp()
         
         return TanhNormal(mean, std)
+    
+    def policy_infer(self, obs):
+        return self(obs).normal_mean

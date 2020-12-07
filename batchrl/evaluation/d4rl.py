@@ -25,7 +25,7 @@ def d4rl_eval_fn(task, eval_episodes=100):
             lengths = 0
             while not done:
                 state = state[np.newaxis]
-                action = policy.get_action(to_torch(state, device=next(policy.parameters()).device, dtype=torch.float32))
+                action = policy.get_action(state)
                 state, reward, done, _ = env.step(action)
                 rewards += reward
                 lengths += 1

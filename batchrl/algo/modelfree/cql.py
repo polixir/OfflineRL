@@ -277,6 +277,9 @@ class AlgoTrainer(BasePolicy):
     
     def save_model(self, model_save_path):
         torch.save(self.actor, model_save_path)
+        
+    def get_policy(self):
+        return self.actor
     
     def train(self, buffer, callback_fn):
         for epoch in range(1,self.args["max_epoch"]+1):
@@ -284,5 +287,9 @@ class AlgoTrainer(BasePolicy):
                 train_data = buffer.sample(self.args["batch_size"])
                 self._train(train_data)
             
-            res = callback_fn(self.actor)
+            res = callback_fn(self.get_policy())
             self.log_res(epoch, res)
+            
+    def get_policy(self):
+        return self.actor
+        
