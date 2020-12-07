@@ -287,7 +287,8 @@ class AlgoTrainer(BasePolicy):
                 train_data = buffer.sample(self.args["batch_size"])
                 self._train(train_data)
             
-            res = callback_fn(self.get_policy())
+            #res = callback_fn(self.get_policy())
+            res = callback_fn(self.get_policy(), buffer)
             self.log_res(epoch, res)
             
     def get_policy(self):
