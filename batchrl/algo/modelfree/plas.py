@@ -15,8 +15,9 @@ import torch.nn.functional as F
 from batchrl.utils.data import to_torch
 from batchrl.algo.base import BasePolicy
 from batchrl.utils.net.common import Net
-from batchrl.utils.net.vae import VAE
+from batchrl.utils.net.vae import VAE,ActorPerturbation
 from batchrl.utils.net.continuous import Critic, Actor
+
 
 
 
@@ -33,23 +34,33 @@ def algo_init(args):
     else:
         raise NotImplementedError
         
-    
+    latent_dim = action_shape *2
     vae = VAE(state_dim = obs_shape, 
               action_dim = action_shape, 
-              latent_dim = action_shape*2, 
+              latent_dim = latent_dim, 
               max_action = max_action,
               hidden_size=args["vae_hidden_size"]).to(args['device'])
     
     vae_opt = optim.Adam(vae.parameters(), lr=args["vae_lr"])
     
 
-    net_a = Net(layer_num = args["layer_num"], 
-                state_shape = obs_shape, 
-                hidden_layer_size = args["hidden_layer_size"])
-    actor = Actor(preprocess_net = net_a,
-                 action_shape = action_shape*2,
-                 max_action = max_action,
-                 hidden_layer_size = args["hidden_layer_size"]).to(args['device'])
+
+    if args["latent"]:
+        actor = ActorPerturbation(obs_shape, 
+                                  action_shape, 
+                                  latent_dim, 
+                                  max_action,
+                                  max_latent_action=2, 
+                                  phi=0.05).to(args['device'])
+        
+    else:
+        net_a = Net(layer_num = args["layer_num"], 
+                    state_shape = obs_shape, 
+                    hidden_layer_size = args["hidden_layer_size"])
+        actor = Actor(preprocess_net = net_a,
+                     action_shape = latent_dim,
+                     max_action = max_action,
+                     hidden_layer_size = args["hidden_layer_size"]).to(args['device'])
 
     
     actor_opt = optim.Adam(actor.parameters(), lr=args["actor_lr"])
@@ -123,7 +134,7 @@ class AlgoTrainer(BasePolicy):
         
         recon, mean, std = self.vae(obs, act)
         recon_loss = F.mse_loss(recon, act)
-        KL_loss = -0.5 * (1 + torch.log(std.pow(2)) - mean.pow(2) - std.pow(2)).mean()
+        KL_loss = -self.args["vae_kl_weight"] * (1 + torch.log(std.pow(2)) - mean.pow(2) - std.pow(2)).mean()
         vae_loss = recon_loss + 0.5 * KL_loss
 
         self.vae_opt.zero_grad()
@@ -141,7 +152,11 @@ class AlgoTrainer(BasePolicy):
             logs['recon_loss'].append(recon_loss)
             logs['kl_loss'].append(KL_loss)
             if (i + 1) % 1000 == 0:
+                logger.info('VAE Epoch : {}, KL_loss : {:.4}', (i + 1) // 1000, KL_loss)
+                logger.info('VAE Epoch : {}, recon_loss : {:.4}', (i + 1) // 1000, recon_loss)
                 logger.info('VAE Epoch : {}, Loss : {:.4}', (i + 1) // 1000, vae_loss)
+
+                #self.log_res((i + 1) // 1000, {"VaeLoss" : vae_loss.item(), "Reconloss" : recon_loss.item(), "KLLoss":KL_loss.item()})
 
         logger.info('Save VAE Model -> {}', "/tmp/vae_"+str(i)+".pkl")
         #torch.save(self.vae, "/tmp/vae_"+str(i)+".pkl") 
@@ -200,6 +215,59 @@ class AlgoTrainer(BasePolicy):
                     self.vae._actor = copy.deepcopy(self.actor)
                     res = eval_fn(self.get_policy())
                     self.log_res((it + 1) // 1000, res)
+                    
+    def _train_policy_latent(self, replay_buffer, eval_fn):
+        for it in range(self.args["actor_iterations"]):
+            batch = replay_buffer.sample(self.args["actor_batch_size"])
+            batch = to_torch(batch, torch.float, device=self.args["device"])
+            rew = batch.rew
+            done = batch.done
+            obs = batch.obs
+            act = batch.act
+            obs_next = batch.obs_next
+
+            # Critic Training
+            with torch.no_grad():
+                _, _, next_action = self.actor_target(obs_next, self.vae.decode)
+
+                target_q1 = self.critic1_target(obs_next, next_action)
+                target_q2 = self.critic2_target(obs_next, next_action)
+ 
+                target_q = self.args["lmbda"] * torch.min(target_q1, target_q2) + (1 - self.args["lmbda"]) * torch.max(target_q1, target_q2)
+                target_q = rew + (1 - done) * self.args["discount"] * target_q
+
+            current_q1 = self.critic1(obs, act)
+            current_q2 = self.critic2(obs, act)
+
+            critic_loss = F.mse_loss(current_q1, target_q) + F.mse_loss(current_q2, target_q)
+
+            self.critic1_opt.zero_grad()
+            self.critic2_opt.zero_grad()
+            critic_loss.backward()
+            self.critic1_opt.step()
+            self.critic2_opt.step()
+            
+            # Actor Training
+            latent_actions, mid_actions, actions = self.actor(obs, self.vae.decode)
+            actor_loss = -self.critic1(obs, actions).mean()
+            
+            self.actor.zero_grad()
+            actor_loss.backward()
+            self.actor_opt.step()
+
+            # update target network
+            self._sync_weight(self.actor_target, self.actor)
+            self._sync_weight(self.critic1_target, self.critic1)
+            self._sync_weight(self.critic2_target, self.critic2)
+            
+            if (it + 1) % 1000 == 0:
+                print("mid_actions :",torch.abs(actions - mid_actions).mean())
+                if eval_fn is None:
+                    self.eval_policy()
+                else:
+                    self.vae._actor = copy.deepcopy(self.actor)
+                    res = eval_fn(self.get_policy())
+                    self.log_res((it + 1) // 1000, res)
     
                     
     def get_model(self):
@@ -209,15 +277,20 @@ class AlgoTrainer(BasePolicy):
         pass
     
     def get_policy(self):
-        self.vae._actor = copy.deepcopy(self.actor)
-        return self.vae
+        if self.args["latent"]:
+            self.actor.vae = copy.deepcopy(self.vae)
+            return self.actor
+        else:
+            self.vae._actor = copy.deepcopy(self.actor)
+            return self.vae
             
     def train(self, replay_buffer, callback_fn=None):
-        """
-        if self.args["vae_pretrain_model"]:
-            self.vae = torch.load("/tmp/vae_499999.pkl").to(self.args["device"])
-        else:
-            self._train_vae(replay_buffer)  
-        """
+        #"""
+
+        #self.vae = torch.load("/tmp/vae_499999.pkl").to(self.args["device"])
         self._train_vae(replay_buffer) 
-        self._train_policy(replay_buffer, callback_fn)
+        self.vae.eval()
+        if self.args["latent"]:
+            self._train_policy_latent(replay_buffer, callback_fn)
+        else:
+            self._train_policy(replay_buffer, callback_fn)

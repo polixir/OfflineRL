@@ -58,3 +58,40 @@ class VAE(nn.Module, BasePolicy):
     
     def policy_infer(self, obs):
         return self.decode(obs, z=self._actor(obs)[0])
+    
+class ActorPerturbation(nn.Module, BasePolicy):
+    def __init__(self, state_dim, action_dim, latent_action_dim, max_action, max_latent_action=2, phi=0.05):
+        super(ActorPerturbation, self).__init__()
+
+        self.hidden_size = (400, 300, 400, 300)
+
+        self.l1 = nn.Linear(state_dim, self.hidden_size[0])
+        self.l2 = nn.Linear(self.hidden_size[0], self.hidden_size[1])
+        self.l3 = nn.Linear(self.hidden_size[1], latent_action_dim)
+
+        self.l4 = nn.Linear(state_dim + action_dim, self.hidden_size[2])
+        self.l5 = nn.Linear(self.hidden_size[2], self.hidden_size[3])
+        self.l6 = nn.Linear(self.hidden_size[3], action_dim)
+
+        self.max_latent_action = max_latent_action
+        self.max_action = max_action
+        self.phi = phi
+        
+        self.vae = None
+
+    def forward(self, state, decoder):
+        a = F.relu(self.l1(state))
+        a = F.relu(self.l2(a))
+        latent_action = self.max_latent_action * torch.tanh(self.l3(a))
+
+        mid_action = decoder(state, z=latent_action)
+
+        a = F.relu(self.l4(torch.cat([state, mid_action], 1)))
+        a = F.relu(self.l5(a))
+        a = self.phi * torch.tanh(self.l6(a))
+        final_action = (a + mid_action).clamp(-self.max_action, self.max_action)
+        return latent_action, mid_action, final_action
+    
+    def policy_infer(self, obs):
+        
+        return self(obs, self.vae.decode)[-1]

@@ -11,3 +11,12 @@ def to_array_as(x, y):
         return to_torch_as(x)
     else:
         return x
+    
+class SampleBatch(Batch):
+    def sample(self,batch_size):
+        length = len(self)
+        assert 1 <= batch_size
+        
+        indices = np.random.randint(0, length, batch_size)
+        
+        return self[indices]
