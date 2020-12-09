@@ -20,3 +20,11 @@ class SampleBatch(Batch):
         indices = np.random.randint(0, length, batch_size)
         
         return self[indices]
+
+def sample(batch : Batch, batch_size : int):
+    length = len(batch)
+    assert 1 <= batch_size
+    
+    indices = np.random.randint(0, length, batch_size)
+
+    return batch[indices]
