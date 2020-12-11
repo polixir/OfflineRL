@@ -2,7 +2,7 @@ import torch
 from batchrl.utils.exp import select_free_cuda
 
 task = "HalfCheetah-v3"
-dataset_path = "/home/revive/syg/datasets/revive/HalfCheetah-v3-low-999-train.npz"
+dataset_path = "/home/revive/syg/datasets/revive/HalfCheetah-v3-low-99-train.npz"
 device = 'cuda'+":"+str(select_free_cuda()) if torch.cuda.is_available() else 'cpu'
 obs_shape = None
 act_shape = None

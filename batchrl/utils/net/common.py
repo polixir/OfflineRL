@@ -53,12 +53,14 @@ class Net(nn.Module):
         softmax: bool = False,
         concat: bool = False,
         hidden_layer_size: int = 128,
+        output_shape: int = 0, 
         dueling: Optional[Tuple[int, int]] = None,
         norm_layer: Optional[Callable[[int], nn.modules.Module]] = None,
     ) -> None:
         super().__init__()
         self.dueling = dueling
         self.softmax = softmax
+        self.output_shape = output_shape
         input_size = np.prod(state_shape)
         if concat:
             input_size += np.prod(action_shape)
@@ -68,6 +70,8 @@ class Net(nn.Module):
         for i in range(layer_num):
             model += miniblock(
                 hidden_layer_size, hidden_layer_size, norm_layer)
+            
+        
 
         if dueling is None:
             if action_shape and not concat:
@@ -89,6 +93,9 @@ class Net(nn.Module):
 
             self.Q = nn.Sequential(*Q)
             self.V = nn.Sequential(*V)
+            
+        if self.output_shape:
+            model +=  [nn.Linear(hidden_layer_size, output_shape)]
         self.model = nn.Sequential(*model)
 
     def forward(
@@ -98,6 +105,7 @@ class Net(nn.Module):
         info: Dict[str, Any] = {},
     ) -> Tuple[torch.Tensor, Any]:
         """Mapping: s -> flatten -> logits."""
+
         s = s.reshape(s.size(0), -1)
         logits = self.model(s)
         if self.dueling is not None:  # Dueling DQN

@@ -4,15 +4,16 @@ import warnings
 warnings.filterwarnings('ignore')
 
 
-from batchrl.config.algo import cql_config, plas_config, pcql_config, mopo_config
+from batchrl.config.algo import cql_config, plas_config, mopo_config, moose_config, mlas_config
 from batchrl.utils.config import parse_config
-from batchrl.algo.modelfree import cql, plas, pcql
-from batchrl.algo.modelbase import mopo
+from batchrl.algo.modelfree import cql, plas, mlas
+from batchrl.algo.modelbase import mopo, moose
 
 algo_dict = {
     "cql" : {"algo" : cql,  "config": cql_config},
     "plas": {"algo" : plas, "config": plas_config},
-    'pcql': {"algo" : pcql, "config": pcql_config},
+    "mlas": {"algo" : mlas, "config": mlas_config},
+    'moose': {"algo" : moose, "config": moose_config},
     'mopo': {"algo" : mopo, "config": mopo_config}
 }
 

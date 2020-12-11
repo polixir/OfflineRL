@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 from torch import nn
+from batchrl.utils.net.common import BasePolicy
 from typing import Any, Dict, Tuple, Union, Optional, Sequence
 
 from batchrl.utils.data import to_torch, to_torch_as, to_numpy
@@ -10,7 +11,7 @@ SIGMA_MIN = -20
 SIGMA_MAX = 2
 
 
-class Actor(nn.Module):
+class Actor(nn.Module, BasePolicy):
     """Simple actor network with MLP.
     For advanced usage (how to customize the network), please refer to
     :ref:`build_the_network`.
@@ -28,10 +29,8 @@ class Actor(nn.Module):
         self.last = nn.Linear(hidden_layer_size, np.prod(action_shape))
         self._max = max_action
         
-    def get_action(self, obs):
-        act, _ = self(obs)
-        
-        return act
+    def policy_infer(self, obs):
+        return self(obs)[0]
         
     def forward(
         self,

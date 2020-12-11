@@ -80,3 +80,43 @@ def mujoco_eval_fn(task, eval_episodes=100):
         return res
     
     return d4rl_eval
+
+
+def mujoco_eval_env(task, eval_episodes=100):
+    env = gym.make(task)
+    
+    def env_model_eval(policy, obs_scaler=None, act_scaler=None):
+        env_mae = []
+        for _ in range(eval_episodes):
+            state, done = env.reset(), False
+            rewards = 0
+            lengths = 0
+            while not done:
+                state = state[np.newaxis]              
+                action = env.action_space.sample()
+                
+                obs = state.reshape(1,-1)
+                act = action.reshape(1,-1)
+                if obs_scaler is not None:
+                    obs = obs_scaler.transform(obs)        
+                if act_scaler is not None:   
+                    act = act_scaler.transform(act)
+                    
+                policy_state = policy.get_action(np.concatenate([obs,act], axis=1))
+                
+                if obs_scaler is not None:
+                    policy_state = obs_scaler.inverse_transform(policy_state)
+                
+                state, reward, done, _ = env.step(action)
+                
+                env_mae.append(np.mean(np.abs(policy_state -state)))
+
+        env_mae = np.mean(env_mae)
+       
+        
+        res = OrderedDict()
+        res["Env_Mae"] = env_mae
+
+        return res
+    
+    return env_model_eval 

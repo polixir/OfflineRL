@@ -1,6 +1,5 @@
-# PLAS: Latent Action Space for Offline Reinforcement Learning
-# https://sites.google.com/view/latent-policy
-# https://github.com/Wenxuan-Zhou/PLAS
+# Overcoming Model Bias for Robust Offline Deep Reinforcement Learning
+# https://arxiv.org/abs/2008.05533
 import abc
 import copy
 from collections import OrderedDict
@@ -15,7 +14,8 @@ import torch.nn.functional as F
 from batchrl.utils.data import to_torch
 from batchrl.algo.base import BasePolicy
 from batchrl.utils.net.common import Net
-from batchrl.utils.net.vae import VAE,ActorPerturbation
+from batchrl.utils.net.moose import VAE
+from batchrl.utils.net.vae import ActorPerturbation
 from batchrl.utils.net.continuous import Critic, Actor
 
 
@@ -32,21 +32,41 @@ def algo_init(args):
     else:
         raise NotImplementedError
         
-    latent_dim = action_shape *2
+    net_bc = Net(layer_num = args["layer_num"], 
+                state_shape = obs_shape+action_shape, 
+                output_shape = obs_shape,
+                hidden_layer_size = args["hidden_layer_size"]).to(args['device'])
+    
+    net_bcs = [copy.deepcopy(net_bc) for i in range(5)]
+    
+    bcs_opt = [optim.Adam(net.parameters(), lr=args["vae_lr"]) for net in net_bcs] 
+    
+    net_rew = Net(layer_num = args["layer_num"], 
+                state_shape = obs_shape + action_shape + obs_shape, 
+                output_shape = 1,
+                hidden_layer_size = args["hidden_layer_size"]).to(args['device'])
+    
+    net_rews = [copy.deepcopy(net_rew) for i in range(5)]
+
+    rews_opt = [optim.Adam(net.parameters(), lr=args["vae_lr"]) for net in net_rews] 
+        
+    latent_dim = action_shape * 2
+    
     vae = VAE(state_dim = obs_shape, 
               action_dim = action_shape, 
-              latent_dim = latent_dim, 
+              latent_dim = action_shape * 2, 
               max_action = max_action,
               hidden_size=args["vae_hidden_size"]).to(args['device'])
     
     vae_opt = optim.Adam(vae.parameters(), lr=args["vae_lr"])
     
 
-
+    
+    
     if args["latent"]:
         actor = ActorPerturbation(obs_shape, 
                                   action_shape, 
-                                  latent_dim, 
+                                  action_shape, 
                                   max_action,
                                   max_latent_action=2, 
                                   phi=0.05).to(args['device'])
@@ -56,7 +76,7 @@ def algo_init(args):
                     state_shape = obs_shape, 
                     hidden_layer_size = args["hidden_layer_size"])
         actor = Actor(preprocess_net = net_a,
-                     action_shape = latent_dim,
+                     action_shape = action_shape,
                      max_action = max_action,
                      hidden_layer_size = args["hidden_layer_size"]).to(args['device'])
 
@@ -84,6 +104,8 @@ def algo_init(args):
     critic2_opt = optim.Adam(critic2.parameters(), lr=args['critic_lr'])
     
     return {
+        "bcs" : {"net" : net_bcs, "opt" : bcs_opt},
+        "rews" : {"net" : net_rews, "opt" : rews_opt},
         "vae" : {"net" : vae, "opt" : vae_opt},
         "actor" : {"net" : actor, "opt" : actor_opt},
         "critic1" : {"net" : critic1, "opt" : critic1_opt},
@@ -106,6 +128,12 @@ class AlgoTrainer(BasePolicy):
     def __init__(self, algo_init, args):
         super(AlgoTrainer, self).__init__(args)
         
+        self.bcs = algo_init["bcs"]["net"]
+        self.bcs_opt = algo_init["bcs"]["opt"]
+        
+        self.rews = algo_init["rews"]["net"]
+        self.rews_opt = algo_init["rews"]["opt"]
+        
         self.vae = algo_init["vae"]["net"]
         self.vae_opt = algo_init["vae"]["opt"]
         
@@ -123,6 +151,40 @@ class AlgoTrainer(BasePolicy):
         self.critic2_target = copy.deepcopy(self.critic2)
         
         self.args = args
+        
+    def _train_bc(self, buffer):
+        bc_loss_list = []
+        rew_loss_list = []
+        for step in range(100000):
+            for i in range(len(self.bcs)):
+                batch = buffer.sample(256)
+                batch = to_torch(batch, torch.float, device=self.args["device"])
+                rew = batch.rew
+                obs = batch.obs
+                act = batch.act
+                obs_next = batch.obs_next
+                
+                obs_act = torch.cat([obs, act], axis=1)
+                obs_next_pre,_ = self.bcs[i](obs_act)
+                rew_pre,_ = self.rews[i](torch.cat([obs, act, obs_next], axis=1))
+                
+                bc_loss = F.mse_loss(obs_next_pre, obs_next)
+                rew_loss =  F.mse_loss(rew_pre, rew)
+                
+                self.bcs_opt[i].zero_grad()
+                self.rews_opt[i].zero_grad()
+                bc_loss.backward()
+                rew_loss.backward()
+                self.bcs_opt[i].step()
+                self.rews_opt[i].step()
+                
+                bc_loss_list.append(bc_loss.item())
+                rew_loss_list.append(rew_loss.item())
+
+            if (step + 1) % 1000 == 0:
+                logger.info('BC Epoch : {}, bc_loss : {:.4}', (step + 1) // 1000, np.mean(bc_loss_list))
+                logger.info('BC Epoch : {}, recon_loss : {:.4}', (step + 1) // 1000, np.mean(rew_loss_list))
+
 
         
     def _train_vae_step(self, batch):
@@ -131,7 +193,7 @@ class AlgoTrainer(BasePolicy):
         act = batch.act
         
         recon, mean, std = self.vae(obs, act)
-        recon_loss = F.mse_loss(recon, act)
+        recon_loss = F.mse_loss(recon, torch.cat([obs,act],axis=1))
         KL_loss = -self.args["vae_kl_weight"] * (1 + torch.log(std.pow(2)) - mean.pow(2) - std.pow(2)).mean()
         vae_loss = recon_loss + 0.5 * KL_loss
 
@@ -169,14 +231,49 @@ class AlgoTrainer(BasePolicy):
             obs = batch.obs
             act = batch.act
             obs_next = batch.obs_next
+            
+            rew_list = []
+            obs = [obs for _ in self.bcs]
+            for i in range(5):
+                act = [ self.actor_target(o)[0] for o in obs]
+                obs_act = [torch.cat([o,a], axis = 1) for o,a in zip(obs,act)]
+                obs_next = [net(oa)[0] for net,oa in zip(self.bcs, obs_act)]
+                obs_act_obs = [torch.cat([oa,on], axis = 1) for oa,on in zip(obs_act,obs_next)]
+                rew = [net(oao)[0] for net,oao in zip(self.rews,obs_act_obs)]
+                
+                if i==0:
+                    r_p = [torch.mean(torch.abs(self.vae(o,a)[0] - oa).detach(),axis=1) for o,a,oa in zip(obs, act, obs_act)]
+                    r_p = torch.mean(torch.cat(rew, axis=1), axis=1)
+
+                rew = torch.cat(rew, axis=1)
+                #rew_min,_ = torch.min(rew, axis=1)
+                #rew_mean = torch.mean(rew, axis=1)
+                
+                #rew = (0.5 * rew_min) + (0.5 *rew_mean) - (0.5*r_p)
+
+                rew_list.append(rew)
+                obs = obs_next
+            r_e = None
+            for index in range(len(rew_list)):
+                if r_e is None:
+                    r_e = rew_list[index]
+                else:
+                    r_e += rew_list[index]*(0.99**index)
+                    
+            rew_min,_ = torch.min(r_e, axis=1)
+            rew_mean = torch.mean(r_e, axis=1)
+
+            rew = (0.5 * rew_min) + (0.5 *rew_mean) - (0.5*r_p)
+            done = batch.done
+            obs = batch.obs
+            act = batch.act
+            obs_next = batch.obs_next
 
             # Critic Training
             with torch.no_grad():
-                action_next_actor,_ = self.actor_target(obs_next)
-                action_next_vae = self.vae.decode(obs_next, z = action_next_actor)
-
-                target_q1 = self.critic1_target(obs_next, action_next_vae)
-                target_q2 = self.critic2_target(obs_next, action_next_vae)
+                action_next,_ = self.actor_target(obs_next)
+                target_q1 = self.critic1_target(obs_next, action_next)
+                target_q2 = self.critic2_target(obs_next, action_next)
  
                 target_q = self.args["lmbda"] * torch.min(target_q1, target_q2) + (1 - self.args["lmbda"]) * torch.max(target_q1, target_q2)
                 target_q = rew + (1 - done) * self.args["discount"] * target_q
@@ -193,9 +290,9 @@ class AlgoTrainer(BasePolicy):
             self.critic2_opt.step()
             
             # Actor Training
-            action_actor,_ = self.actor(obs)
-            action_vae = self.vae.decode(obs, z = action_actor)
-            actor_loss = -self.critic1(obs, action_vae).mean()
+            action,_ = self.actor(obs)
+
+            actor_loss = -self.critic1(obs, action).mean()
             
             self.actor.zero_grad()
             actor_loss.backward()
@@ -275,17 +372,10 @@ class AlgoTrainer(BasePolicy):
         pass
     
     def get_policy(self):
-        if self.args["latent"]:
-            self.actor.vae = copy.deepcopy(self.vae)
-            return self.actor
-        else:
-            self.vae._actor = copy.deepcopy(self.actor)
-            return self.vae
+        return self.actor
             
     def train(self, replay_buffer, callback_fn=None):
-        #"""
-
-        #self.vae = torch.load("/tmp/vae_499999.pkl").to(self.args["device"])
+        self._train_bc(replay_buffer)
         self._train_vae(replay_buffer) 
         self.vae.eval()
         if self.args["latent"]:

@@ -1,5 +1,0 @@
-# OPAL: OFFLINE PRIMITIVE DISCOVERY FOR ACCELERATING OFFLINE REINFORCEMENT LEARNING
-# URL : https://sites.google.com/view/opal-iclr
-# https://arxiv.org/abs/2010.13611
-
-# TO DO

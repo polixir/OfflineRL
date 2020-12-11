@@ -1,8 +1,10 @@
-import numpy as np
 import torch
+import numpy as np
 
-from tianshou.data import to_torch, to_torch_as, to_numpy
+from sklearn.preprocessing import MinMaxScaler
 from tianshou.data import Batch
+from tianshou.data import to_torch, to_torch_as, to_numpy
+
 
 def to_array_as(x, y):    
     if isinstance(x, torch.Tensor) and isinstance(y, np.ndarray):
@@ -28,3 +30,11 @@ def sample(batch : Batch, batch_size : int):
     indices = np.random.randint(0, length, batch_size)
 
     return batch[indices]
+
+
+    
+def get_scaler(data):
+    scaler = MinMaxScaler((-1,1))
+    scaler.fit(data)
+    
+    return scaler
