@@ -42,6 +42,9 @@ def algo_init(args):
 
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args['actor_lr'])
 
+    log_alpha = torch.zeros(1, requires_grad=True, device=args['device'])
+    alpha_optimizer = torch.optim.Adam([log_alpha], lr=args["actor_lr"])
+
     q1 = MLP(obs_shape + action_shape, 1, args['hidden_layer_size'], args['hidden_layers'], norm=None, hidden_activation='swish').to(args['device'])
     q2 = MLP(obs_shape + action_shape, 1, args['hidden_layer_size'], args['hidden_layers'], norm=None, hidden_activation='swish').to(args['device'])
     critic_optim = torch.optim.Adam([*q1.parameters(), *q2.parameters()], lr=args['actor_lr'])
@@ -49,6 +52,7 @@ def algo_init(args):
     return {
         "transitions" : {"net" : transitions, "opt" : transition_optims},
         "actor" : {"net" : actor, "opt" : actor_optim},
+        "log_alpha" : {"net" : log_alpha, "opt" : alpha_optimizer},
         "critic" : {"net" : [q1, q2], "opt" : critic_optim},
     }
 
@@ -110,6 +114,9 @@ class AlgoTrainer(BasePolicy):
         self.actor = algo_init['actor']['net']
         self.actor_optim = algo_init['actor']['opt']
 
+        self.log_alpha = algo_init['log_alpha']['net']
+        self.log_alpha_optim = algo_init['log_alpha']['opt']
+
         self.q1, self.q2 = algo_init['critic']['net']
         self.target_q1 = deepcopy(self.q1)
         self.target_q2 = deepcopy(self.q2)
@@ -147,7 +154,7 @@ class AlgoTrainer(BasePolicy):
                 for transition, optim in zip(self.transitions, self.transition_optims):
                     self._train_transition(transition, batch, optim)
             new_val_losses = [self._eval_transition(transition, valdata) for transition in self.transitions]
-            # print(new_val_losses)
+            print(new_val_losses)
 
             change = False
             for i, new_loss, old_loss in zip(range(len(val_losses)), new_val_losses, val_losses):
@@ -155,7 +162,7 @@ class AlgoTrainer(BasePolicy):
                     change = True
                     val_losses[i] = new_loss
                     output_transitions[i] = deepcopy(self.transitions[i])
-            
+
             if change:
                 cnt = 0
             else:
@@ -211,7 +218,7 @@ class AlgoTrainer(BasePolicy):
 
                 self._sac_update(batch)
 
-            res = callback_fn(self.get_policy(), real_buffer)
+            res = callback_fn(self.get_policy())
             self.log_res(epoch, res)
 
         return self.get_policy()
@@ -235,7 +242,8 @@ class AlgoTrainer(BasePolicy):
             next_obs_action = torch.cat([next_obs, next_action], dim=-1)
             _target_q1 = self.target_q1(next_obs_action)
             _target_q2 = self.target_q2(next_obs_action)
-            y = reward + self.args['discount'] * (1 - done) * (torch.min(_target_q1, _target_q2) - log_prob)
+            alpha = torch.exp(self.log_alpha)
+            y = reward + self.args['discount'] * (1 - done) * (torch.min(_target_q1, _target_q2) - alpha * log_prob)
 
         critic_loss = ((y - _q1) ** 2).mean() + ((y - _q2) ** 2).mean()
 
@@ -247,19 +255,24 @@ class AlgoTrainer(BasePolicy):
         self._sync_weight(self.target_q1, self.q1, soft_target_tau=self.args['soft_target_tau'])
         self._sync_weight(self.target_q2, self.q2, soft_target_tau=self.args['soft_target_tau'])
 
+        # # update alpha
+        # alpha_loss = - torch.mean(self.log_alpha * (log_prob + self.args['target_entropy']).detach())
+
+        # self.log_alpha_optim.zero_grad()
+        # alpha_loss.backward()
+        # self.log_alpha_optim.step()
+
         # update actor
         action_dist = self.actor(obs)
         new_action = action_dist.rsample()
         action_log_prob = action_dist.log_prob(new_action)
         new_obs_action = torch.cat([obs, new_action], dim=-1)
         q = torch.min(self.q1(new_obs_action), self.q2(new_obs_action))
-
-        actor_loss = - q.mean() + action_log_prob.sum(dim=-1).mean()
+        actor_loss = - q.mean() + torch.exp(self.log_alpha) * action_log_prob.sum(dim=-1).mean()
 
         self.actor_optim.zero_grad()
         actor_loss.backward()
         self.actor_optim.step()
-
 
     def _select_best(self, metrics, models, n):
         pairs = [(metric, model) for metric, model in zip(metrics, models)]
