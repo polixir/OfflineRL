@@ -38,6 +38,11 @@ class TanhNormal(Distribution):
         else:
             return torch.tanh(z)
 
+    def atanh(self,x):
+        one_plus_x = (1 + x).clamp(min=1e-6)
+        one_minus_x = (1 - x).clamp(min=1e-6)
+        return 0.5 * torch.log(one_plus_x / one_minus_x)
+
     def log_prob(self, value, pre_tanh_value=None):
         """
 
@@ -46,9 +51,8 @@ class TanhNormal(Distribution):
         :return:
         """
         if pre_tanh_value is None:
-            pre_tanh_value = torch.log(
-                (1+value) / (1-value)
-            ) / 2
+            pre_tanh_value = self.atanh(value)
+
         return self.normal.log_prob(pre_tanh_value) - torch.log(
             1 - value * value + self.epsilon
         )
