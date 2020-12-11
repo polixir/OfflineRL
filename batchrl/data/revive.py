@@ -11,7 +11,6 @@ from batchrl.data import dataset_dir
 from batchrl.utils.data import SampleBatch
 
     
-    
 def load_revive_buffer(data_dir):
     data = np.load(data_dir)
     

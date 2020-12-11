@@ -14,8 +14,8 @@ def run_algo(**kwargs):
 
     algo_init = algo_init_fn(algo_config)
     algo_trainer = algo_trainer_obj(algo_init, algo_config)
-    #algo_trainer.train(offlinebuffer,callback_fn=d4rl_eval_fn(algo_config["task"], eval_episodes=100))
-    algo_trainer.train(offlinebuffer,callback_fn=fqe_eval_fn())
+    algo_trainer.train(offlinebuffer,callback_fn=d4rl_eval_fn(algo_config["task"], eval_episodes=100))
+    #algo_trainer.train(offlinebuffer,callback_fn=fqe_eval_fn())
 
     
 if __name__ == "__main__":
