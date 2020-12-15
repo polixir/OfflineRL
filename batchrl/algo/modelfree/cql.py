@@ -9,7 +9,7 @@ from torch import nn
 from torch import optim
 from loguru import logger
 
-from batchrl.algo.base import BasePolicy
+from batchrl.algo.base import BaseAlgo
 from batchrl.utils.data import to_torch
 from batchrl.utils.net.common import Net
 from batchrl.utils.net.continuous import Critic
@@ -70,16 +70,25 @@ def algo_init(args):
             [log_alpha],
             lr=args["actor_lr"],
         )
+        
+    if args["lagrange_thresh"] >= 0:
+        target_action_gap = args["lagrange_thresh"]
+        log_alpha_prime = torch.zeros(1,requires_grad=True, device=args['device'])
+        alpha_prime_optimizer = optim.Adam(
+            [log_alpha_prime],
+            lr=args["critic_lr"],
+        )
 
     return {
         "actor" : {"net" : actor, "opt" : actor_optim},
         "critic1" : {"net" : critic1, "opt" : critic1_optim},
         "critic2" : {"net" : critic2, "opt" : critic2_optim},
-        "log_alpha" : {"net" : log_alpha, "opt" : alpha_optimizer, "target_entropy": target_entropy}
+        "log_alpha" : {"net" : log_alpha, "opt" : alpha_optimizer, "target_entropy": target_entropy},
+        "log_alpha_prime" : {"net" : log_alpha_prime, "opt" : alpha_prime_optimizer} 
     }
 
 
-class AlgoTrainer(BasePolicy):
+class AlgoTrainer(BaseAlgo):
     def __init__(self, algo_init, args):
         super(AlgoTrainer, self).__init__(args)
         self.args = args
@@ -98,6 +107,10 @@ class AlgoTrainer(BasePolicy):
             self.log_alpha = algo_init["log_alpha"]["net"]
             self.alpha_opt = algo_init["log_alpha"]["opt"]
             self.target_entropy = algo_init["log_alpha"]["target_entropy"]
+            
+        if self.args["lagrange_thresh"] >= 0:
+            self.log_alpha_prime = algo_init["log_alpha_prime"]["net"]
+            self.alpha_prime_opt = algo_init["log_alpha_prime"]["opt"]
             
         self.critic_criterion = nn.MSELoss()
         
@@ -173,11 +186,6 @@ class AlgoTrainer(BasePolicy):
             alpha_loss = 0
             alpha = 1
 
-        q_new_actions = torch.min(
-            self.critic1(obs, new_obs_actions),
-            self.critic2(obs, new_obs_actions),
-        )
-
         if self._current_epoch < self.args["policy_bc_steps"]:
             """
             For the initial few epochs, try doing behaivoral cloning, if needed
@@ -187,10 +195,16 @@ class AlgoTrainer(BasePolicy):
             policy_log_prob = self.actor.log_prob(obs, actions)
             policy_loss = (alpha * log_pi - policy_log_prob).mean()
         else:
+            q_new_actions = torch.min(
+                self.critic1(obs, new_obs_actions),
+                self.critic2(obs, new_obs_actions),
+            )
+            
             policy_loss = (alpha*log_pi - q_new_actions).mean()
         self.actor_opt.zero_grad()
         policy_loss.backward()
         self.actor_opt.step()
+
         
         """
         QF Loss
@@ -205,14 +219,33 @@ class AlgoTrainer(BasePolicy):
             obs, reparameterize=True, return_log_prob=True,
         )
 
-        if not self.args["max_q_backup"]:
+        if self.args["type_q_backup"] == "max":
+            target_q_values = torch.max(
+                self.critic1_target(next_obs, new_next_actions),
+                self.critic2_target(next_obs, new_next_actions),
+            )
+            target_q_values = target_q_values - alpha * new_log_pi
+                
+        elif self.args["type_q_backup"] == "min":
             target_q_values = torch.min(
                 self.critic1_target(next_obs, new_next_actions),
                 self.critic2_target(next_obs, new_next_actions),
             )
+            target_q_values = target_q_values - alpha * new_log_pi
+        elif self.args["type_q_backup"] == "medium":
+            target_q1_next = self.critic1_target(next_obs, new_next_actions)
+            target_q2_next = self.critic2_target(next_obs, new_next_actions)
+            target_q_values = self.args["q_backup_lmbda"] * torch.min(target_q1_next, target_q2_next) \
+                            + (1 - self.args["q_backup_lmbda"]) * torch.max(target_q1_next, target_q2_next)
+            target_q_values = target_q_values - alpha * new_log_pi
             
-            if not self.args["deterministic_backup"]:
-                target_q_values = target_q_values - alpha * new_log_pi
+        else:
+            """when using max q backup"""
+            next_actions_temp, _ = self._get_policy_actions(next_obs, num_actions=10, network=self.forward)
+            target_qf1_values = self._get_tensor_values(next_obs, next_actions_temp, network=self.critic1).max(1)[0].view(-1, 1)
+            target_qf2_values = self._get_tensor_values(next_obs, next_actions_temp, network=self.critic2).max(1)[0].view(-1, 1)
+            target_q_values = torch.min(target_qf1_values, target_qf2_values)
+
 
         q_target = self.args["reward_scale"] * rewards + (1. - terminals) * self.args["discount"] * target_q_values.detach()
             
@@ -249,6 +282,17 @@ class AlgoTrainer(BasePolicy):
         """Subtract the log likelihood of data"""
         min_qf1_loss = min_qf1_loss - q1_pred.mean() * self.args["min_q_weight"]
         min_qf2_loss = min_qf2_loss - q2_pred.mean() * self.args["min_q_weight"]
+        
+        
+        if self.args["lagrange_thresh"] >= 0:
+            alpha_prime = torch.clamp(self.log_alpha_prime.exp(), min=0.0, max=1000000.0)
+            min_qf1_loss = alpha_prime * (min_qf1_loss - self.args["lagrange_thresh"])
+            min_qf2_loss = alpha_prime * (min_qf2_loss - self.args["lagrange_thresh"])
+
+            self.alpha_prime_opt.zero_grad()
+            alpha_prime_loss = (-min_qf1_loss - min_qf2_loss)*0.5 
+            alpha_prime_loss.backward(retain_graph=True)
+            self.alpha_prime_opt.step()
 
         qf1_loss = self.args["explore"]*qf1_loss + (2-self.args["explore"])*min_qf1_loss
         qf2_loss = self.args["explore"]*qf2_loss + (2-self.args["explore"])*min_qf2_loss
@@ -271,6 +315,7 @@ class AlgoTrainer(BasePolicy):
         self._sync_weight(self.critic2_target, self.critic2, self.args["soft_target_tau"])
         
         self._n_train_steps_total += 1
+
         
     def get_model(self):
         return self.actor
@@ -291,6 +336,7 @@ class AlgoTrainer(BasePolicy):
             #res = callback_fn(self.get_policy(), buffer)
             self.log_res(epoch, res)
             
+        return res["Reward_Mean"]
+            
     def get_policy(self):
         return self.actor
-        

@@ -10,7 +10,7 @@ from torch.functional import F
 
 from tianshou.data import Batch
 
-from batchrl.algo.base import BasePolicy
+from batchrl.algo.base import BaseAlgo
 from batchrl.utils.data import to_torch, sample
 from batchrl.utils.net.common import MLP, Net
 from batchrl.utils.net.tanhpolicy import TanhGaussianPolicy
@@ -102,7 +102,7 @@ class MOPOBuffer:
         return self.data[indexes]
 
 
-class AlgoTrainer(BasePolicy):
+class AlgoTrainer(BaseAlgo):
     def __init__(self, algo_init, args):
         super(AlgoTrainer, self).__init__(args)
         self.args = args

@@ -6,6 +6,7 @@ dataset_path = "/home/revive/syg/datasets/revive/HalfCheetah-v3-low-99-train.npz
 device = 'cuda'+":"+str(select_free_cuda()) if torch.cuda.is_available() else 'cpu'
 obs_shape = None
 act_shape = None
+max_action = None
 
 vae_iterations = 500000
 vae_hidden_size = 750

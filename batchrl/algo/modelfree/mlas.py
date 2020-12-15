@@ -13,7 +13,7 @@ from loguru import logger
 import torch.nn.functional as F
 
 from batchrl.utils.data import to_torch,get_scaler
-from batchrl.algo.base import BasePolicy as BaseTrainer
+from batchrl.algo.base import BaseAlgo
 from batchrl.utils.net.common import Net
 from batchrl.utils.net.mlas import VAE,ActorPerturbation
 from batchrl.utils.net.continuous import Critic, Actor
@@ -104,7 +104,7 @@ class eval_policy():
         return action.cpu().data.numpy().flatten()
 
 
-class AlgoTrainer(BaseTrainer):
+class AlgoTrainer(BaseAlgo):
     def __init__(self, algo_init, args):
         super(AlgoTrainer, self).__init__(args)
         

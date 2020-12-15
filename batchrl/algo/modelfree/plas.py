@@ -13,7 +13,7 @@ from loguru import logger
 import torch.nn.functional as F
 
 from batchrl.utils.data import to_torch
-from batchrl.algo.base import BasePolicy
+from batchrl.algo.base import BaseAlgo
 from batchrl.utils.net.common import Net
 from batchrl.utils.net.vae import VAE,ActorPerturbation
 from batchrl.utils.net.continuous import Critic, Actor
@@ -24,6 +24,7 @@ def algo_init(args):
     
     if args["obs_shape"] and args["action_shape"]:
         obs_shape, action_shape = args["obs_shape"], args["action_shape"]
+        max_action = args["max_action"]
     elif "task" in args.keys():
         from batchrl.utils.env import get_env_shape, get_env_action_range
         obs_shape, action_shape = get_env_shape(args['task'])
@@ -102,7 +103,7 @@ class eval_policy():
         return action.cpu().data.numpy().flatten()
 
 
-class AlgoTrainer(BasePolicy):
+class AlgoTrainer(BaseAlgo):
     def __init__(self, algo_init, args):
         super(AlgoTrainer, self).__init__(args)
         
@@ -259,7 +260,6 @@ class AlgoTrainer(BasePolicy):
             self._sync_weight(self.critic2_target, self.critic2)
             
             if (it + 1) % 1000 == 0:
-                print("mid_actions :",torch.abs(actions - mid_actions).mean())
                 if eval_fn is None:
                     self.eval_policy()
                 else:

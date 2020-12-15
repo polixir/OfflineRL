@@ -7,7 +7,9 @@ def get_env(task):
     else:
         import d4rl
         env = gym.make(task)
-
+        if task == "HalfCheetah-v3":
+            env = gym.make("HalfCheetah-v3", exclude_current_positions_from_observation=False)
+        
     return env
 
 def get_env_shape(task):

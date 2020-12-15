@@ -32,7 +32,6 @@ def sample(batch : Batch, batch_size : int):
     return batch[indices]
 
 
-    
 def get_scaler(data):
     scaler = MinMaxScaler((-1,1))
     scaler.fit(data)

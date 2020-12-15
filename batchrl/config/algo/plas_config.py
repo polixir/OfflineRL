@@ -2,20 +2,23 @@ import torch
 from batchrl.utils.exp import select_free_cuda
 
 task = "ib"
-dataset_path = "/home/revive/syg/datasets/revive/ib/simens-low-99-train.npz"
+dataset_path = "/home/revive/syg/datasets/revive/ib/ib-low-99-train.npz"
 device = 'cuda'+":"+str(select_free_cuda()) if torch.cuda.is_available() else 'cpu'
 obs_shape = None
 act_shape = None
+max_action = None
 
-vae_iterations = 500000
+aim_path = "/home/revive/syg/polixir/BatchRL/examples"
+
+vae_iterations = 1
 vae_hidden_size = 750
 vae_batch_size = 100
 vae_kl_weight = 0.5
 #vae_pretrain_model = "/tmp/vae_499999.pkl"
 
 
-latent = True
-layer_num = 3
+latent = False
+layer_num = 5
 actor_batch_size = 100
 hidden_layer_size = 256
 actor_iterations = 500000
@@ -35,4 +38,12 @@ params_tune = {
     "actor_lr" : {"type" : "continuous", "value":[1E-4, 1E-3]},
     "vae_lr" : {"type" : "continuous", "value":[1E-4, 1E-3]},
     "lmbda" :{"type": "discrete", "value":[0.0, 0.25, 0.5, 0.75, 1.0]},
+}
+
+#tune
+grid_tune = {
+    "vae_iterations" : [50000, 100000, 500000],
+    "actor_batch_size" : [128, 256],
+    "latent" : [True, False],
+    "lmbda" : [0.65, 0.75, 0.85]
 }

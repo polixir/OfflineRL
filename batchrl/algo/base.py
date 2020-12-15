@@ -5,15 +5,17 @@ from loguru import logger
 from batchrl.utils.exp import init_exp_logger
 
 
-class BasePolicy(ABC):
-    def __init__(self, args):
+class BaseAlgo(ABC):
+    def __init__(self, args):        
         logger.info('Init AlgoTrainer')
         if "exp_name" not in args.keys():
             exp_name = str(uuid.uuid1()).replace("-","")
         else:
             exp_name = args["exp_name"]
-
-        self.exp_logger = init_exp_logger(experiment_name = exp_name)
+        
+        if "aim_path" in args.keys():
+            repo = args["aim_path"]
+        self.exp_logger = init_exp_logger(repo = repo, experiment_name = exp_name)
         self.exp_logger.set_params(args, name='hparams')
 
     

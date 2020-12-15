@@ -5,6 +5,7 @@ task = "walker2d-medium-v0"
 device = 'cuda'+":"+str(select_free_cuda()) if torch.cuda.is_available() else 'cpu'
 obs_shape = None
 act_shape = None
+max_action = None
 
 hidden_layer_size = 200
 hidden_layers = 2

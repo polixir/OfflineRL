@@ -12,7 +12,7 @@ from loguru import logger
 import torch.nn.functional as F
 
 from batchrl.utils.data import to_torch
-from batchrl.algo.base import BasePolicy
+from batchrl.algo.base import BaseAlgo
 from batchrl.utils.net.common import Net
 from batchrl.utils.net.moose import VAE
 from batchrl.utils.net.vae import ActorPerturbation
@@ -124,7 +124,7 @@ class eval_policy():
         return action.cpu().data.numpy().flatten()
 
 
-class AlgoTrainer(BasePolicy):
+class AlgoTrainer(BaseAlgo):
     def __init__(self, algo_init, args):
         super(AlgoTrainer, self).__init__(args)
         
