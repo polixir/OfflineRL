@@ -10,7 +10,7 @@ max_action = None
 
 aim_path = "/home/revive/syg/polixir/BatchRL/examples"
 
-vae_iterations = 1
+vae_iterations = 500000
 vae_hidden_size = 750
 vae_batch_size = 100
 vae_kl_weight = 0.5
@@ -34,10 +34,12 @@ phi = 0.05
 
 #tune
 params_tune = {
-    "vae_iterations" : {"type" : "continuous", "value":[50000, 100000, 500000,]},
+    "vae_iterations" : {"type" : "discrete", "value":[50000, 100000, 500000,]},
     "actor_lr" : {"type" : "continuous", "value":[1E-4, 1E-3]},
     "vae_lr" : {"type" : "continuous", "value":[1E-4, 1E-3]},
-    "lmbda" :{"type": "discrete", "value":[0.0, 0.25, 0.5, 0.75, 1.0]},
+    "actor_batch_size" : {"type": "discrete", "value":[128, 256, 512]},
+    "latent" : {"type": "discrete", "value":[True, False]},
+    "lmbda" :{"type": "discrete", "value":[0.65, 0.75, 0.85]},
 }
 
 #tune
