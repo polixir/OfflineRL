@@ -255,12 +255,13 @@ class AlgoTrainer(BaseAlgo):
         self._sync_weight(self.target_q1, self.q1, soft_target_tau=self.args['soft_target_tau'])
         self._sync_weight(self.target_q2, self.q2, soft_target_tau=self.args['soft_target_tau'])
 
-        # # update alpha
-        # alpha_loss = - torch.mean(self.log_alpha * (log_prob + self.args['target_entropy']).detach())
+        if self.args['learnable_alpha']:
+            # update alpha
+            alpha_loss = - torch.mean(self.log_alpha * (log_prob + self.args['target_entropy']).detach())
 
-        # self.log_alpha_optim.zero_grad()
-        # alpha_loss.backward()
-        # self.log_alpha_optim.step()
+            self.log_alpha_optim.zero_grad()
+            alpha_loss.backward()
+            self.log_alpha_optim.step()
 
         # update actor
         action_dist = self.actor(obs)
