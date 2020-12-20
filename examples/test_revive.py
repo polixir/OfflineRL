@@ -5,6 +5,7 @@ from batchrl.data.revive import load_revive_buffer
 from batchrl.evaluation.gym import gym_policy_eval,gym_env_eval
 from batchrl.evaluation.fqe import fqe_eval_fn
 
+
 def run_algo(**kwargs):
     algo_init_fn, algo_trainer_obj, algo_config = algo_select(kwargs)
      

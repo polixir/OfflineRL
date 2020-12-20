@@ -5,10 +5,15 @@ def get_env(task):
         from industrial_benchmark_python.IBGym import IBGym
         env = IBGym(setpoint=70, reward_type='classic', action_type='continuous', observation_type='include_past')    
     else:
-        import d4rl
         env = gym.make(task)
         if task == "HalfCheetah-v3":
             env = gym.make("HalfCheetah-v3", exclude_current_positions_from_observation=False)
+        elif task == "Hopper-v3":
+            env = gym.make('Hopper-v3', exclude_current_positions_from_observation=False)
+        elif task == "Walker2d-v3":   
+            env = gym.make('Walker2d-v3',  exclude_current_positions_from_observation=False)
+        else:
+            raise NotImplementedError
         
     return env
 

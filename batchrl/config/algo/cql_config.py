@@ -1,9 +1,11 @@
 import torch
 from batchrl.utils.exp import select_free_cuda
 
-task = "ib"
-dataset_path = "/home/revive/syg/datasets/revive/ib/ib-low-99-train.npz"
-dataset_dir = "/home/revive/syg/datasets/walker2d/walker2d"
+#task = "Walker2d-v3"
+task = "Hopper-v3"
+#dataset_path = "/home/revive/syg/datasets/revive/walker/Walker2d-v3-low-999-train.npz"
+dataset_path = "/home/revive/syg/datasets/revive/hopper/Hopper-v3-low-999-train.npz"
+dataset_dir = "/home/revive/syg/datasets/revive//walker2d"
 device = 'cuda'+":"+str(select_free_cuda()) if torch.cuda.is_available() else 'cpu'
 obs_shape = None
 act_shape = None
@@ -12,7 +14,7 @@ max_action = None
 aim_path = "/home/revive/syg/polixir/BatchRL/examples"
 
 
-max_epoch = 500
+max_epoch = 200
 steps_per_epoch = 1000
 policy_bc_steps = 40000
 

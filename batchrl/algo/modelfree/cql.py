@@ -71,6 +71,14 @@ def algo_init(args):
             lr=args["actor_lr"],
         )
         
+    nets =  {
+        "actor" : {"net" : actor, "opt" : actor_optim},
+        "critic1" : {"net" : critic1, "opt" : critic1_optim},
+        "critic2" : {"net" : critic2, "opt" : critic2_optim},
+        "log_alpha" : {"net" : log_alpha, "opt" : alpha_optimizer, "target_entropy": target_entropy},
+        
+    }
+        
     if args["lagrange_thresh"] >= 0:
         target_action_gap = args["lagrange_thresh"]
         log_alpha_prime = torch.zeros(1,requires_grad=True, device=args['device'])
@@ -78,14 +86,10 @@ def algo_init(args):
             [log_alpha_prime],
             lr=args["critic_lr"],
         )
-
-    return {
-        "actor" : {"net" : actor, "opt" : actor_optim},
-        "critic1" : {"net" : critic1, "opt" : critic1_optim},
-        "critic2" : {"net" : critic2, "opt" : critic2_optim},
-        "log_alpha" : {"net" : log_alpha, "opt" : alpha_optimizer, "target_entropy": target_entropy},
-        "log_alpha_prime" : {"net" : log_alpha_prime, "opt" : alpha_prime_optimizer} 
-    }
+        
+        nets.update({"log_alpha_prime" : {"net" : log_alpha_prime, "opt" : alpha_prime_optimizer} })
+        
+    return nets
 
 
 class AlgoTrainer(BaseAlgo):

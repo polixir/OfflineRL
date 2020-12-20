@@ -284,7 +284,6 @@ class AlgoTrainer(BaseAlgo):
             
     def train(self, replay_buffer, callback_fn=None):
         #"""
-
         #self.vae = torch.load("/tmp/vae_499999.pkl").to(self.args["device"])
         self._train_vae(replay_buffer) 
         self.vae.eval()

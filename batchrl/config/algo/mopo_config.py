@@ -1,7 +1,8 @@
 import torch
 from batchrl.utils.exp import select_free_cuda
 
-task = "walker2d-medium-v0"
+task = "Walker2d-v3"
+dataset_path = "/home/revive/syg/datasets/revive/walker/Walker2d-v3-low-999-train.npz"
 device = 'cuda'+":"+str(select_free_cuda()) if torch.cuda.is_available() else 'cpu'
 obs_shape = None
 act_shape = None
