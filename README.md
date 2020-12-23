@@ -12,5 +12,5 @@ pip install -e .
 ## Example
 
 ```
-python examples/test.py --algo_name=cql --exp_name=halfcheetah-medium-v0
+python examples/test_revive.py --algo_name=cql --exp_name=halfcheetah-medium-v0 --task HalfCheetah-v3-low-99-train
 ```
