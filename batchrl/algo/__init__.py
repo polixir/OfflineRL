@@ -4,9 +4,9 @@ import warnings
 warnings.filterwarnings('ignore')
 
 
-from batchrl.config.algo import cql_config, plas_config, mopo_config, moose_config, mlas_config
+from batchrl.config.algo import cql_config, plas_config, mopo_config, moose_config, mlas_config, bcqd_config
 from batchrl.utils.config import parse_config
-from batchrl.algo.modelfree import cql, plas, mlas
+from batchrl.algo.modelfree import cql, plas, mlas, bcqd
 from batchrl.algo.modelbase import mopo, moose
 
 algo_dict = {
@@ -14,7 +14,8 @@ algo_dict = {
     "plas": {"algo" : plas, "config": plas_config},
     "mlas": {"algo" : mlas, "config": mlas_config},
     'moose': {"algo" : moose, "config": moose_config},
-    'mopo': {"algo" : mopo, "config": mopo_config}
+    'mopo': {"algo" : mopo, "config": mopo_config},
+    'bcqd': {"algo" : bcqd, "config": bcqd_config},
 }
 
 def algo_select(command_args, algo_config_module=None):

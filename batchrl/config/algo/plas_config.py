@@ -17,7 +17,7 @@ vae_kl_weight = 0.5
 #vae_pretrain_model = "/tmp/vae_499999.pkl"
 
 
-latent = False
+latent = True
 layer_num = 5
 actor_batch_size = 100
 hidden_layer_size = 256
@@ -44,8 +44,6 @@ params_tune = {
 
 #tune
 grid_tune = {
-    "vae_iterations" : [50000, 100000, 500000],
     "actor_batch_size" : [128, 256],
-    "latent" : [True, False],
-    "lmbda" : [0.65, 0.75, 0.85]
+    "phi" : [0.05, 0.1, 0.2, 0.4]
 }

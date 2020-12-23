@@ -2,13 +2,14 @@ import fire
 from ray import tune
 
 from batchrl.algo import algo_select
+from batchrl.data import load_data_by_task
 from batchrl.data.revive import load_revive_buffer
 from batchrl.evaluation.gym import gym_policy_eval,gym_env_eval
 from batchrl.evaluation.fqe import fqe_eval_fn
 
 def training_function(config):
     algo_init_fn, algo_trainer_obj, algo_config = algo_select(config["kwargs"])
-    offlinebuffer = load_revive_buffer(algo_config["dataset_path"])
+    offlinebuffer = load_data_by_task(algo_config["task"])
     algo_config.update(config)
     algo_config["device"] = "cuda"
     algo_init = algo_init_fn(algo_config)
@@ -36,4 +37,3 @@ def run_algo(**kwargs):
     
 if __name__ == "__main__":
     fire.Fire(run_algo)
-    

@@ -341,6 +341,3 @@ class AlgoTrainer(BaseAlgo):
             self.log_res(epoch, res)
             
         return res["Reward_Mean"]
-            
-    def get_policy(self):
-        return self.actor

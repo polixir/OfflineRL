@@ -14,7 +14,7 @@ max_action = None
 aim_path = "/home/revive/syg/polixir/BatchRL/examples"
 
 
-max_epoch = 200
+max_epoch = 1000
 steps_per_epoch = 1000
 policy_bc_steps = 40000
 

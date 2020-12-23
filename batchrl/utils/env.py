@@ -1,26 +1,39 @@
 import gym
 
 def get_env(task):
-    if task == "ib":
+    if task.startswith("ib"):
         from industrial_benchmark_python.IBGym import IBGym
-        env = IBGym(setpoint=70, reward_type='classic', action_type='continuous', observation_type='include_past')    
+        env = IBGym(setpoint=70, reward_type='classic', action_type='continuous', observation_type='include_past') 
+    elif task.startswith("traffic"):
+        from offlinedata.get_env import create_env
+        env = create_env("traffic")
     else:
-        env = gym.make(task)
-        if task == "HalfCheetah-v3":
+        if task.startswith("HalfCheetah-v3"):
             env = gym.make("HalfCheetah-v3", exclude_current_positions_from_observation=False)
-        elif task == "Hopper-v3":
+        elif task.startswith("Hopper-v3"):
             env = gym.make('Hopper-v3', exclude_current_positions_from_observation=False)
-        elif task == "Walker2d-v3":   
+        elif task.startswith("Walker2d-v3"):   
             env = gym.make('Walker2d-v3',  exclude_current_positions_from_observation=False)
         else:
-            raise NotImplementedError
+            try:
+                env = gym.make(env_name)
+            except:
+                raise NotImplementedError
         
     return env
 
 def get_env_shape(task):
     env = get_env(task)
-    obs_dim = env.observation_space.low.size
-    act_dim = env.action_space.low.size
+    obs_dim = env.observation_space.shape
+    action_space = env.action_space
+    
+    if len(obs_dim) == 1:
+        obs_dim = obs_dim[0]
+        
+    if hasattr(env.action_space, 'n'):
+        act_dim = env.action_space.n
+    else:
+        act_dim = action_space.shape[0]
     
     return obs_dim, act_dim
 
