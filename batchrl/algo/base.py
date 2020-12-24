@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 
 from loguru import logger
 from batchrl.utils.exp import init_exp_logger
+from batchrl.utils.io import create_dir, download_helper, read_json
 
 
 class BaseAlgo(ABC):
@@ -14,10 +15,14 @@ class BaseAlgo(ABC):
         else:
             exp_name = args["exp_name"]
         
-        repo = None
+        repo = "/tmp/.aim/"
         if "aim_path" in args.keys():
             if os.path.exists(args["aim_path"]):
                 repo = args["aim_path"]
+        else:
+            if not os.path.exists(repo):
+                create_dir(repo)
+          
         self.exp_logger = init_exp_logger(repo = repo, experiment_name = exp_name)
         self.exp_logger.set_params(args, name='hparams')
 
