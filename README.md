@@ -13,4 +13,6 @@ pip install -e .
 
 ```
 python examples/test_revive.py --algo_name=cql --exp_name=halfcheetah-medium-v0 --task HalfCheetah-v3-low-99-train
+
+python examples/train_tune.py --algo_name=cql --exp_name=halfcheetah-medium-v0 --task HalfCheetah-v3-low-99-train --aim_path /tmp/.aim/
 ```
