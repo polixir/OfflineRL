@@ -17,15 +17,13 @@ setup(
     author_email="songyigao@gmail.com",
     python_requires=">=3.7",
     install_requires=[
-        "aim",
+        "aim==2.0.27",
         "fire",
         "loguru",
         "gym",
         "gtimer",
         "numpy",
         "tianshou",
-        "mjrl",
-        "d4rl",
     ],
     
 )
