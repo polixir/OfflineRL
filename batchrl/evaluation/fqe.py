@@ -138,19 +138,19 @@ class FQE:
         return critic
 
 def fqe_eval_fn():
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     def fqe_eval(policy, buffer):
         Fqe = FQE(policy, buffer,
-                  q_hidden_features=256,
+                  q_hidden_features=1024,
                   q_hidden_layers=2)
+
         critic = Fqe.train_estimator(discount=0.99,
-                                    target_update_period=100,
-                                    critic_lr=1e-5,
-                                    num_steps=5000,
-                                    polyak=0.95)
-        np.random.seed(seed=1)
-        torch.manual_seed(seed=1)
-        eval_size = 32
+                                    target_update_period=50,
+                                    critic_lr=1e-4,
+                                    num_steps=10000,
+                                    polyak=0)
+
+        eval_size = 1024
         batch = buffer.sample(eval_size)
         data = to_torch(batch, torch.float)
         o0, a0 = data.obs, data.act
