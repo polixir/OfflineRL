@@ -21,7 +21,6 @@ real_data_ratio = 0.05
 
 transition_batch_size = 256
 policy_batch_size = 256
-transition_steps_per_epoch = 1000
 data_collection_per_epoch = 50e3
 buffer_size = 1.2e6
 steps_per_epoch = 1000
@@ -40,8 +39,8 @@ lam = 2
 
 #tune
 params_tune = {
-    "buffer_size" : {"type" : "discrete", "value": [5e5, 1e6, 2e6]},
-    "real_data_ratio" : {"type" : "discrete", "value": [0.05, 0.1]},
+    "buffer_size" : {"type" : "discrete", "value": [1e6, 2e6]},
+    "real_data_ratio" : {"type" : "discrete", "value": [0.05, 0.1, 0.2]},
     "horzion" : {"type" : "discrete", "value": [1, 2, 5]},
     "lam" : {"type" : "continuous", "value": [0.1, 10]},
     "learnable_alpha" : {"type" : "discrete", "value": [True, False]},
@@ -49,9 +48,8 @@ params_tune = {
 
 #tune
 grid_tune = {
-    "buffer_size" : [5e5, 1e6, 2e6],
-    "real_data_ratio" : [0.05, 0.1, 0.2],
+    "buffer_size" : [1e6, 2e6],
     "horizon" : [1, 2, 5],
-    "lam" : [0.01, 0.1, 0.5, 1, 2, 5, 10, 100],
+    "lam" : [0.1, 0.5, 1, 2, 5, 10, 100],
     "learnable_alpha" : [True, False],
 }
