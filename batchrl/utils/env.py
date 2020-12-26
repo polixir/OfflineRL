@@ -16,7 +16,8 @@ def get_env(task):
             env = gym.make('Walker2d-v3',  exclude_current_positions_from_observation=False)
         else:
             try:
-                env = gym.make(env_name)
+                import d4rl
+                env = gym.make(task)
             except:
                 raise NotImplementedError
         

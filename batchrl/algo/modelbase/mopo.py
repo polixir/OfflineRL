@@ -12,7 +12,7 @@ from tianshou.data import Batch
 
 from batchrl.algo.base import BaseAlgo
 from batchrl.utils.data import to_torch, sample
-from batchrl.utils.net.common import MLP, Net
+from batchrl.utils.net.common import MLP, Net, Swish
 from batchrl.utils.net.tanhpolicy import TanhGaussianPolicy
 
 def algo_init(args):
@@ -27,9 +27,8 @@ def algo_init(args):
     else:
         raise NotImplementedError
     
-    transition_creator = lambda: Transition(obs_shape, action_shape, args['hidden_layer_size'], args['transition_layers']).to(args['device'])
-    transitions = [transition_creator() for i in range(args['transition_init_num'])]
-    transition_optims = [torch.optim.Adam(model.parameters(), lr=args['transition_lr']) for model in transitions]
+    transition = EnsembleTransition(obs_shape, action_shape, args['hidden_layer_size'], args['transition_layers'], args['transition_init_num']).to(args['device'])
+    transition_optim = torch.optim.Adam(transition.parameters(), lr=args['transition_lr'], weight_decay=0.000075)
 
     net_a = Net(layer_num=args['hidden_layers'], 
                 state_shape=obs_shape, 
@@ -50,7 +49,7 @@ def algo_init(args):
     critic_optim = torch.optim.Adam([*q1.parameters(), *q2.parameters()], lr=args['actor_lr'])
 
     return {
-        "transitions" : {"net" : transitions, "opt" : transition_optims},
+        "transition" : {"net" : transition, "opt" : transition_optim},
         "actor" : {"net" : actor, "opt" : actor_optim},
         "log_alpha" : {"net" : log_alpha, "opt" : alpha_optimizer},
         "critic" : {"net" : [q1, q2], "opt" : critic_optim},
@@ -64,18 +63,78 @@ def soft_clamp(x : torch.Tensor, _min=None, _max=None):
         x = _min + F.softplus(x - _min)
     return x
 
-class Transition(torch.nn.Module):
-    def __init__(self, obs_dim, action_dim, hidden_features, hidden_layers):
+class EnsembleLinear(torch.nn.Module):
+    def __init__(self, in_features, out_features, ensemble_size=7):
         super().__init__()
-        self.net = MLP(obs_dim + action_dim, 2 * (obs_dim + 1), hidden_features, hidden_layers, norm=None, hidden_activation='swish')
-        self.register_parameter('max_logstd', torch.nn.Parameter(torch.ones(obs_dim + 1) * 1, requires_grad=True))
-        self.register_parameter('min_logstd', torch.nn.Parameter(torch.ones(obs_dim + 1) * -5, requires_grad=True))
+
+        self.ensemble_size = ensemble_size
+
+        self.register_parameter('weight', torch.nn.Parameter(torch.zeros(ensemble_size, in_features, out_features)))
+        self.register_parameter('bias', torch.nn.Parameter(torch.zeros(ensemble_size, 1, out_features)))
+
+        torch.nn.init.trunc_normal_(self.weight, std=1/(2*in_features**0.5))
+
+        self.select = list(range(0, self.ensemble_size))
+
+    def forward(self, x):
+        weight = self.weight[self.select]
+        bias = self.bias[self.select]
+
+        if len(x.shape) == 2:
+            x = torch.einsum('ij,bjk->bik', x, weight)
+        else:
+            x = torch.einsum('bij,bjk->bik', x, weight)
+
+        x = x + bias
+
+        return x
+
+    def set_select(self, indexes):
+        assert len(indexes) <= self.ensemble_size and max(indexes) < self.ensemble_size
+        self.select = indexes
+
+class EnsembleTransition(torch.nn.Module):
+    def __init__(self, obs_dim, action_dim, hidden_features, hidden_layers, ensemble_size=7, mode='local', with_reward=True):
+        super().__init__()
+        self.obs_dim = obs_dim
+        self.mode = mode
+        self.with_reward = with_reward
+        self.ensemble_size = ensemble_size
+
+        self.activation = Swish()
+
+        module_list = []
+        for i in range(hidden_layers):
+            if i == 0:
+                module_list.append(EnsembleLinear(obs_dim + action_dim, hidden_features, ensemble_size))
+            else:
+                module_list.append(EnsembleLinear(hidden_features, hidden_features, ensemble_size))
+        self.backbones = torch.nn.ModuleList(module_list)
+
+        self.output_layer = EnsembleLinear(hidden_features, 2 * (obs_dim + self.with_reward), ensemble_size)
+
+        self.register_parameter('max_logstd', torch.nn.Parameter(torch.ones(obs_dim + self.with_reward) * 1, requires_grad=True))
+        self.register_parameter('min_logstd', torch.nn.Parameter(torch.ones(obs_dim + self.with_reward) * -5, requires_grad=True))
 
     def forward(self, obs_action):
-        mu, logstd = torch.chunk(self.net(obs_action), 2, dim=-1)
+        output = obs_action
+        for layer in self.backbones:
+            output = self.activation(layer(output))
+        mu, logstd = torch.chunk(self.output_layer(output), 2, dim=-1)
         logstd = soft_clamp(logstd, self.min_logstd, self.max_logstd)
+        if self.mode == 'local':
+            if self.with_reward:
+                obs, reward = torch.split(mu, [self.obs_dim, 1], dim=-1)
+                obs = obs + obs_action[..., :self.obs_dim]
+                mu = torch.cat([obs, reward], dim=-1)
+            else:
+                mu = mu + obs_action[..., :self.obs_dim]
         return torch.distributions.Normal(mu, torch.exp(logstd))
 
+    def set_select(self, indexes):
+        for layer in self.backbones:
+            layer.set_select(indexes)
+        self.output_layer.set_select(indexes)
 
 class MOPOBuffer:
     def __init__(self, buffer_size):
@@ -107,8 +166,8 @@ class AlgoTrainer(BaseAlgo):
         super(AlgoTrainer, self).__init__(args)
         self.args = args
 
-        self.transitions = algo_init['transitions']['net']
-        self.transition_optims = algo_init['transitions']['opt']
+        self.transition = algo_init['transition']['net']
+        self.transition_optim = algo_init['transition']['opt']
         self.selected_transitions = None
 
         self.actor = algo_init['actor']['net']
@@ -125,9 +184,9 @@ class AlgoTrainer(BaseAlgo):
         self.device = args['device']
         
     def train(self, buffer, callback_fn):
-        self.selected_transitions = self.train_transitions(buffer)
-        for transition in self.selected_transitions: transition.requires_grad_(False)   
-        policy = self.train_policy(buffer, self.selected_transitions, callback_fn)
+        transition = self.train_transition(buffer)
+        transition.requires_grad_(False)   
+        policy = self.train_policy(buffer, transition, callback_fn)
 
     def save_model(self, model_save_path):
         torch.save(self.get_policy(), model_save_path)
@@ -135,25 +194,26 @@ class AlgoTrainer(BaseAlgo):
     def get_policy(self):
         return self.actor
 
-    def train_transitions(self, buffer):
+    def train_transition(self, buffer):
         data_size = len(buffer)
-        val_size = int(data_size * 0.01) + 1
+        val_size = min(int(data_size * 0.2) + 1, 1000)
         train_size = data_size - val_size
         train_splits, val_splits = torch.utils.data.random_split(range(data_size), (train_size, val_size))
         train_buffer = buffer[train_splits.indices]
         valdata = buffer[val_splits.indices]
+        batch_size = self.args['transition_batch_size']
 
-        val_losses = [float('inf') for i in range(len(self.transitions))]
-        output_transitions = [None] * len(self.transitions)
+        val_losses = [float('inf') for i in range(self.transition.ensemble_size)]
 
         epoch = 0
         cnt = 0
         while True:
-            for _ in range(self.args['transition_steps_per_epoch']):
-                batch = sample(train_buffer, self.args['batch_size'])
-                for transition, optim in zip(self.transitions, self.transition_optims):
-                    self._train_transition(transition, batch, optim)
-            new_val_losses = [self._eval_transition(transition, valdata) for transition in self.transitions]
+            idxs = np.random.randint(train_buffer.shape[0], size=[self.transition.ensemble_size, train_buffer.shape[0]])
+            for batch_num in range(int(np.ceil(idxs.shape[-1] / batch_size))):
+                batch_idxs = idxs[:, batch_num * batch_size:(batch_num + 1) * batch_size]
+                batch = train_buffer[batch_idxs]
+                self._train_transition(self.transition, batch, self.transition_optim)
+            new_val_losses = self._eval_transition(self.transition, valdata)
             print(new_val_losses)
 
             change = False
@@ -161,7 +221,6 @@ class AlgoTrainer(BaseAlgo):
                 if new_loss < old_loss:
                     change = True
                     val_losses[i] = new_loss
-                    output_transitions[i] = deepcopy(self.transitions[i])
 
             if change:
                 cnt = 0
@@ -170,12 +229,15 @@ class AlgoTrainer(BaseAlgo):
 
             if cnt >= 3:
                 break
+        
+        val_losses = self._eval_transition(self.transition, valdata)
+        indexes = self._select_best_indexes(val_losses, n=self.args['transition_select_num'])
+        self.transition.set_select(indexes)
+        return self.transition
 
-        return self._select_best(val_losses, output_transitions, n=self.args['transition_select_num'])
-
-    def train_policy(self, real_buffer, transitions, callback_fn):
-        real_batch_size = int(self.args['batch_size'] * self.args['real_data_ratio'])
-        model_batch_size = self.args['batch_size']  - real_batch_size
+    def train_policy(self, real_buffer, transition, callback_fn):
+        real_batch_size = int(self.args['policy_batch_size'] * self.args['real_data_ratio'])
+        model_batch_size = self.args['policy_batch_size']  - real_batch_size
         
         model_buffer = MOPOBuffer(self.args['buffer_size'])
 
@@ -187,20 +249,30 @@ class AlgoTrainer(BaseAlgo):
                 for t in range(self.args['horizon']):
                     action = self.actor(obs).sample()
                     obs_action = torch.cat([obs, action], dim=-1)
-                    next_obs_dists = [transition(obs_action) for transition in transitions]
-                    dist_stds = torch.stack([dist.stddev for dist in next_obs_dists], dim=0)
-                    uncertainty = torch.max(dist_stds, dim=0)[0].sum(dim=-1, keepdim=True)
-                    next_obses = torch.stack([dist.sample() for dist in next_obs_dists], dim=0)
-                    model_indexes = np.random.randint(0, len(transitions), size=(obs.shape[0]))
+                    next_obs_dists = transition(obs_action)
+                    next_obses = next_obs_dists.sample()
+                    rewards = next_obses[:, :, -1:]
+                    next_obses = next_obses[:, :, :-1]
+
+                    next_obses_mode = next_obs_dists.mean[:, :, :-1]
+                    next_obs_mean = torch.mean(next_obses_mode, dim=0)
+                    diff = next_obses_mode - next_obs_mean
+                    uncertainty = torch.max(torch.norm(diff, dim=-1, keepdim=True), dim=0)[0]
+
+                    model_indexes = np.random.randint(0, next_obses.shape[0], size=(obs.shape[0]))
                     next_obs = next_obses[model_indexes, np.arange(obs.shape[0])]
-                    rewards = next_obs[:, -1:] - self.args['lam'] * uncertainty
-                    next_obs = next_obs[:, :-1] + obs
-                    dones = torch.zeros_like(rewards)
+                    reward = rewards[model_indexes, np.arange(obs.shape[0])]
+                    
+                    print('average reward:', reward.mean().item())
+                    print('average uncertainty:', uncertainty.mean().item())
+
+                    penalized_reward = reward - self.args['lam'] * uncertainty
+                    dones = torch.zeros_like(reward)
 
                     batch_data = Batch({
                         "obs" : obs.cpu(),
                         "act" : action.cpu(),
-                        "rew" : rewards.cpu(),
+                        "rew" : penalized_reward.cpu(),
                         "done" : dones.cpu(),
                         "obs_next" : next_obs.cpu(),
                     })
@@ -219,6 +291,8 @@ class AlgoTrainer(BaseAlgo):
                 self._sac_update(batch)
 
             res = callback_fn(self.get_policy())
+            res['uncertainty'] = uncertainty.mean().item()
+            res['reward'] = reward.mean().item()
             self.log_res(epoch, res)
 
         return self.get_policy()
@@ -275,17 +349,19 @@ class AlgoTrainer(BaseAlgo):
         actor_loss.backward()
         self.actor_optim.step()
 
-    def _select_best(self, metrics, models, n):
-        pairs = [(metric, model) for metric, model in zip(metrics, models)]
+    def _select_best_indexes(self, metrics, n):
+        pairs = [(metric, index) for metric, index in zip(metrics, range(len(metrics)))]
         pairs = sorted(pairs, key=lambda x: x[0])
-        selected_models = [pairs[i][1] for i in range(n)]
-        return selected_models
+        selected_indexes = [pairs[i][1] for i in range(n)]
+        return selected_indexes
 
     def _train_transition(self, transition, data, optim):
         data.to_torch(device=self.device)
         dist = transition(torch.cat([data['obs'], data['act']], dim=-1))
-        loss = - dist.log_prob(torch.cat([data['obs_next'] - data['obs'], data['rew']], dim=-1))
+        loss = - dist.log_prob(torch.cat([data['obs_next'], data['rew']], dim=-1))
         loss = loss.mean()
+
+        loss = loss + 0.01 * transition.max_logstd.mean() - 0.01 * transition.min_logstd.mean()
 
         optim.zero_grad()
         loss.backward()
@@ -295,5 +371,5 @@ class AlgoTrainer(BaseAlgo):
         with torch.no_grad():
             valdata.to_torch(device=self.device)
             dist = transition(torch.cat([valdata['obs'], valdata['act']], dim=-1))
-            loss = ((dist.mean - torch.cat([valdata['obs_next'] - valdata['obs'], valdata['rew']], dim=-1)) ** 2).mean()
-            return loss.mean().item()
+            loss = ((dist.mean - torch.cat([valdata['obs_next'], valdata['rew']], dim=-1)) ** 2).mean(dim=(1,2))
+            return list(loss.cpu().numpy())
