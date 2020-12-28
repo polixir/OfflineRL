@@ -15,13 +15,11 @@ class BaseAlgo(ABC):
         else:
             exp_name = args["exp_name"]
         
-        repo = "/tmp/.aim/"
         if "aim_path" in args.keys():
             if os.path.exists(args["aim_path"]):
                 repo = args["aim_path"]
         else:
-            if not os.path.exists(repo):
-                create_dir(repo)
+            repo = None
           
         self.exp_logger = init_exp_logger(repo = repo, experiment_name = exp_name)
         self.exp_logger.set_params(args, name='hparams')
@@ -52,5 +50,3 @@ class BaseAlgo(ABC):
     @abstractmethod
     def get_policy(self,):
         pass
-    
-    

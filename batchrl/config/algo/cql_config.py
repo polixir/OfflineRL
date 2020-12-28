@@ -11,7 +11,6 @@ obs_shape = None
 act_shape = None
 max_action = None
 
-aim_path = "/home/revive/syg/polixir/BatchRL/examples"
 
 
 max_epoch = 1000

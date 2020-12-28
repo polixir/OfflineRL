@@ -23,6 +23,8 @@ def run_algo(**kwargs):
     config = {}
     config["kwargs"] = kwargs
     _, _, algo_config = algo_select(kwargs)
+    # Prepare Dataset
+    load_data_by_task(algo_config["task"])
     grid_tune = algo_config["grid_tune"]
     for k,v in grid_tune.items():
         config[k] = tune.grid_search(v)

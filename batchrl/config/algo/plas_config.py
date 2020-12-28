@@ -8,8 +8,6 @@ obs_shape = None
 act_shape = None
 max_action = None
 
-aim_path = "/home/revive/syg/polixir/BatchRL/examples"
-
 vae_iterations = 500000
 vae_hidden_size = 750
 vae_batch_size = 100

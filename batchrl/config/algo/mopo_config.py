@@ -8,7 +8,6 @@ obs_shape = None
 act_shape = None
 max_action = None
 
-aim_path = "/home/ubuntu/revive/BatchRL/examples"
 
 hidden_layer_size = 200
 hidden_layers = 2

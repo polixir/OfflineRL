@@ -5,6 +5,9 @@ import random
 import aim
 import torch
 import numpy as np
+from loguru import logger
+
+from batchrl.utils.logger import log_path
 
 def setup_seed(seed=1024):
      torch.manual_seed(seed)
@@ -19,7 +22,7 @@ def select_free_cuda():
     os.system('nvidia-smi -q -d Memory |grep -A4 GPU|grep Free >'+tmp_name)
     memory_gpu = [int(x.split()[2]) for x in open(tmp_name, 'r').readlines()]
     os.system('rm '+tmp_name)  # 删除临时生成的 tmp 文件
-
+    
     return np.argmax(memory_gpu)
 
 def set_free_device_fn():
@@ -28,8 +31,13 @@ def set_free_device_fn():
     return device
 
 
-def init_exp_logger(repo=None, experiment_name=None,flush_frequency=1):   
-
+def init_exp_logger(repo=None, experiment_name=None, flush_frequency=1):
+    if repo is None:
+        repo = os.path.join(log_path(),"./.aim")
+        if not os.path.exists(repo):
+            logger.info('{} dir is not exist, create {}',repo, repo)
+            os.system(str("cd " + os.path.join(repo,"../") + "&& aim init"))
+    
     aim_logger = aim.Session(repo = repo, experiment=experiment_name, flush_frequency=flush_frequency)
 
     return aim_logger

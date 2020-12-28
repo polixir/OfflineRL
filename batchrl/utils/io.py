@@ -28,9 +28,11 @@ def del_dir(dir_path):
     os.removedirs(dir_path)
     
 def create_dir(dir_path, cover=False):
-    if cover and os.path.exists(dir_path):
-        os.removedirs(dir_path)
+    if cover or not os.path.exists(dir_path):
+        if cover and os.path.exists(dir_path):
+            os.removedirs(dir_path)
         os.makedirs(dir_path)
+        
         
 def save_video(video_array, video_save_path):
     import cv2
@@ -77,5 +79,3 @@ def download_helper(url, filename):
             return True
         else:
             raise e
-            
-     

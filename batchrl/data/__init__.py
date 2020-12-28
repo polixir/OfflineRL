@@ -1,13 +1,17 @@
 import os
+import time
+import random
 from loguru import logger
+
+from batchrl.utils.logger import log_path
 from batchrl.utils.io import create_dir, download_helper, read_json
 
-dataset_dir = "/tmp/batchrl_datasets"
+dataset_dir = os.path.join(log_path(),"./batchrl_datasets")
 create_dir(dataset_dir)
 
 
-
 def load_data_by_task(task):
+    time.sleep(random.random()*10)
     if task.startswith("d4rl"):
         pass
     else:

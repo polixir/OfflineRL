@@ -1,5 +1,7 @@
 import gym
 
+
+"""
 def get_env(task):
     if task.startswith("ib"):
         from industrial_benchmark_python.IBGym import IBGym
@@ -22,6 +24,32 @@ def get_env(task):
                 raise NotImplementedError
         
     return env
+"""
+def get_env(task):
+    from offlinedata.get_env import create_env
+    if task.startswith("ib"):
+        create_env("ib")
+    elif task.startswith("traffic"):
+        env = create_env("traffic")
+    else:
+        if task.startswith("HalfCheetah-v3"):
+            #env = gym.make("HalfCheetah-v3", exclude_current_positions_from_observation=False)
+            env = create_env("HalfCheetah-v3")
+        elif task.startswith("Hopper-v3"):
+            #env = gym.make('Hopper-v3', exclude_current_positions_from_observation=False)
+            env = create_env("Hopper-v3")
+        elif task.startswith("Walker2d-v3"):   
+            #env = gym.make('Walker2d-v3',  exclude_current_positions_from_observation=False)
+            env = create_env("Walker2d-v3")
+        else:
+            try:
+                import d4rl
+                env = gym.make(task)
+            except:
+                raise NotImplementedError
+        
+    return env
+
 
 def get_env_shape(task):
     env = get_env(task)

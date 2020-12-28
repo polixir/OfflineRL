@@ -8,8 +8,6 @@ obs_shape = None
 act_shape = None
 max_action = None
 
-aim_path = "/home/ubuntu/revive/BatchRL/examples"
-
 vae_features = 750
 vae_layers = 2
 jitter_features = 400

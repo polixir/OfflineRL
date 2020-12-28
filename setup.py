@@ -21,9 +21,11 @@ setup(
         "fire",
         "loguru",
         "gym",
+        "sklearn",
         "gtimer",
         "numpy",
         "tianshou",
+        "mujoco-py==2.0.2.13",
     ],
     
 )
