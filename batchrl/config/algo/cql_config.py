@@ -11,9 +11,7 @@ obs_shape = None
 act_shape = None
 max_action = None
 
-
-
-max_epoch = 1000
+max_epoch = 300
 steps_per_epoch = 1000
 policy_bc_steps = 40000
 
@@ -57,9 +55,9 @@ params_tune = {
 
 #tune
 grid_tune = {
-    "actor_lr" : [1e-4, 3e-4],
+    # "actor_lr" : [1e-4, 3e-4],
     "min_q_version" : [2, 3],
     "min_q_weight" : [5, 10],
     "lagrange_thresh" : [-1, 2, 5, 10],
-    "type_q_backup" : ["max", "none"],
+    # "type_q_backup" : ["max", "none"],
 }

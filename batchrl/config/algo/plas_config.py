@@ -8,7 +8,7 @@ obs_shape = None
 act_shape = None
 max_action = None
 
-vae_iterations = 500000
+vae_iterations = 100000
 vae_hidden_size = 750
 vae_batch_size = 100
 vae_kl_weight = 0.5
@@ -19,7 +19,7 @@ latent = True
 layer_num = 5
 actor_batch_size = 100
 hidden_layer_size = 256
-actor_iterations = 500000
+actor_iterations = 200000
 vae_lr = 1e-4
 actor_lr = 1e-4
 critic_lr = 1e-3
