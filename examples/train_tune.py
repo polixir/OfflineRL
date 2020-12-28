@@ -32,7 +32,7 @@ def run_algo(**kwargs):
     analysis = tune.run(
         training_function,
         config=config,
-        resources_per_trial={"gpu": 1},
+        resources_per_trial={"gpu": 0.5},
         queue_trials = True,
         )
 
