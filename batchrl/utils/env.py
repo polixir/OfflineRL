@@ -9,6 +9,8 @@ def get_env(task):
     elif task.startswith("traffic"):
         from offlinedata.get_env import create_env
         env = create_env("traffic")
+    elif task.startswith("finance"):
+        env = create_env("finance")
     else:
         if task.startswith("HalfCheetah-v3"):
             env = gym.make("HalfCheetah-v3", exclude_current_positions_from_observation=False)
