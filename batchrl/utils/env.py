@@ -31,6 +31,8 @@ def get_env(task):
         env = create_env("ib")
     elif task.startswith("traffic"):
         env = create_env("traffic")
+    elif task.startswith("finance"):
+        env = create_env("finance")
     else:
         if task.startswith("HalfCheetah-v3"):
             #env = gym.make("HalfCheetah-v3", exclude_current_positions_from_observation=False)
