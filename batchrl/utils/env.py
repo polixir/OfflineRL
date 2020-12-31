@@ -28,7 +28,7 @@ def get_env(task):
 def get_env(task):
     from offlinedata.get_env import create_env
     if task.startswith("ib"):
-        create_env("ib")
+        env = create_env("ib")
     elif task.startswith("traffic"):
         env = create_env("traffic")
     else:
