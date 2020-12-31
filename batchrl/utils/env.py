@@ -9,8 +9,6 @@ def get_env(task):
     elif task.startswith("traffic"):
         from offlinedata.get_env import create_env
         env = create_env("traffic")
-    elif task.startswith("finance"):
-        env = create_env("finance")
     else:
         if task.startswith("HalfCheetah-v3"):
             env = gym.make("HalfCheetah-v3", exclude_current_positions_from_observation=False)
@@ -33,24 +31,28 @@ def get_env(task):
         env = create_env("ib")
     elif task.startswith("traffic"):
         env = create_env("traffic")
-    elif task.startswith("finance"):
-        env = create_env("finance")
+    #elif task.startswith("finance"):
+    #    env = create_env("finance")
     else:
-        if task.startswith("HalfCheetah-v3"):
-            #env = gym.make("HalfCheetah-v3", exclude_current_positions_from_observation=False)
-            env = create_env("HalfCheetah-v3")
-        elif task.startswith("Hopper-v3"):
-            #env = gym.make('Hopper-v3', exclude_current_positions_from_observation=False)
-            env = create_env("Hopper-v3")
-        elif task.startswith("Walker2d-v3"):   
-            #env = gym.make('Walker2d-v3',  exclude_current_positions_from_observation=False)
-            env = create_env("Walker2d-v3")
-        else:
-            try:
-                import d4rl
-                env = gym.make(task)
-            except:
-                raise NotImplementedError
+        try:
+            task_name = task.strip().split("-")[0]
+            env = create_env(task_name)
+        except:
+            if task.startswith("HalfCheetah-v3"):
+                #env = gym.make("HalfCheetah-v3", exclude_current_positions_from_observation=False)
+                env = create_env("HalfCheetah-v3")
+            elif task.startswith("Hopper-v3"):
+                #env = gym.make('Hopper-v3', exclude_current_positions_from_observation=False)
+                env = create_env("Hopper-v3")
+            elif task.startswith("Walker2d-v3"):   
+                #env = gym.make('Walker2d-v3',  exclude_current_positions_from_observation=False)
+                env = create_env("Walker2d-v3")
+            else:
+                try:
+                    import d4rl
+                    env = gym.make(task)
+                except:
+                    raise NotImplementedError
         
     return env
 
@@ -85,7 +87,3 @@ def get_env_state_range(task):
     obs_min = float(env.observation_space.low[0])
     
     return obs_max, obs_min
-
-
-
-
