@@ -1,59 +1,25 @@
 import gym
+import porl
 
 
-"""
 def get_env(task):
-    if task.startswith("ib"):
-        from industrial_benchmark_python.IBGym import IBGym
-        env = IBGym(setpoint=70, reward_type='classic', action_type='continuous', observation_type='include_past') 
-    elif task.startswith("traffic"):
-        from offlinedata.get_env import create_env
-        env = create_env("traffic")
-    else:
+    try:
+        task_name = task.strip().split("-")[0]
+        env = porl.make(task_name)
+    except:
         if task.startswith("HalfCheetah-v3"):
-            env = gym.make("HalfCheetah-v3", exclude_current_positions_from_observation=False)
+            env = porl.make("HalfCheetah-v3")
         elif task.startswith("Hopper-v3"):
-            env = gym.make('Hopper-v3', exclude_current_positions_from_observation=False)
+            env = porl.make("Hopper-v3")
         elif task.startswith("Walker2d-v3"):   
-            env = gym.make('Walker2d-v3',  exclude_current_positions_from_observation=False)
+            env = porl.make("Walker2d-v3")
         else:
             try:
                 import d4rl
                 env = gym.make(task)
             except:
                 raise NotImplementedError
-        
-    return env
-"""
-def get_env(task):
-    from offlinedata.get_env import create_env
-    if task.startswith("ib"):
-        env = create_env("ib")
-    elif task.startswith("traffic"):
-        env = create_env("traffic")
-    #elif task.startswith("finance"):
-    #    env = create_env("finance")
-    else:
-        try:
-            task_name = task.strip().split("-")[0]
-            env = create_env(task_name)
-        except:
-            if task.startswith("HalfCheetah-v3"):
-                #env = gym.make("HalfCheetah-v3", exclude_current_positions_from_observation=False)
-                env = create_env("HalfCheetah-v3")
-            elif task.startswith("Hopper-v3"):
-                #env = gym.make('Hopper-v3', exclude_current_positions_from_observation=False)
-                env = create_env("Hopper-v3")
-            elif task.startswith("Walker2d-v3"):   
-                #env = gym.make('Walker2d-v3',  exclude_current_positions_from_observation=False)
-                env = create_env("Walker2d-v3")
-            else:
-                try:
-                    import d4rl
-                    env = gym.make(task)
-                except:
-                    raise NotImplementedError
-        
+
     return env
 
 
