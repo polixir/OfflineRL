@@ -27,7 +27,7 @@ def load_data_by_task(task):
         if task not in data_map.keys():
             url = "https://polixir-ai.oss-cn-shanghai.aliyuncs.com/datasets/offline/data_map.json"
             data = download_helper(url, data_map_path)
-            
+            data_map = read_json(data_map_path) # refresh data_map
             
         task_name = [i for i in data_map.keys() if i.startswith(task) and i.endswith(".npz")]
         if len(task_name) == 0:
