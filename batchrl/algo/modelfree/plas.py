@@ -142,10 +142,10 @@ class AlgoTrainer(BaseAlgo):
         
         return vae_loss.cpu().data.numpy(), recon_loss.cpu().data.numpy(), KL_loss.cpu().data.numpy()
         
-    def _train_vae(self, replay_buffer):
+    def _train_vae(self, train_buffer):
         logs = {'vae_loss': [], 'recon_loss': [], 'kl_loss': []}
         for i in range(self.args["vae_iterations"]):
-            batch = replay_buffer.sample(self.args["vae_batch_size"])
+            batch = train_buffer.sample(self.args["vae_batch_size"])
             vae_loss, recon_loss, KL_loss = self._train_vae_step(batch)
             logs['vae_loss'].append(vae_loss)
             logs['recon_loss'].append(recon_loss)
@@ -161,9 +161,9 @@ class AlgoTrainer(BaseAlgo):
         #torch.save(self.vae, "/tmp/vae_"+str(i)+".pkl") 
 
         
-    def _train_policy(self, replay_buffer, eval_fn):
+    def _train_policy(self, train_buffer, callback_fn):
         for it in range(self.args["actor_iterations"]):
-            batch = replay_buffer.sample(self.args["actor_batch_size"])
+            batch = train_buffer.sample(self.args["actor_batch_size"])
             batch = to_torch(batch, torch.float, device=self.args["device"])
             rew = batch.rew
             done = batch.done
@@ -208,16 +208,19 @@ class AlgoTrainer(BaseAlgo):
             self._sync_weight(self.critic2_target, self.critic2)
             
             if (it + 1) % 1000 == 0:
-                if eval_fn is None:
+                if callback_fn is None:
                     self.eval_policy()
                 else:
                     self.vae._actor = copy.deepcopy(self.actor)
-                    res = eval_fn(self.get_policy())
+                    res = callback_fn(policy = self.get_policy(), 
+                                      train_buffer = train_buffer,
+                                      val_buffer = val_buffer,
+                                      args = self.args)
                     self.log_res((it + 1) // 1000, res)
                     
-    def _train_policy_latent(self, replay_buffer, eval_fn):
+    def _train_policy_latent(self, train_buffer, val_buffer, callback_fn):
         for it in range(self.args["actor_iterations"]):
-            batch = replay_buffer.sample(self.args["actor_batch_size"])
+            batch = train_buffer.sample(self.args["actor_batch_size"])
             batch = to_torch(batch, torch.float, device=self.args["device"])
             rew = batch.rew
             done = batch.done
@@ -260,11 +263,14 @@ class AlgoTrainer(BaseAlgo):
             self._sync_weight(self.critic2_target, self.critic2)
             
             if (it + 1) % 1000 == 0:
-                if eval_fn is None:
+                if callback_fn is None:
                     self.eval_policy()
                 else:
                     self.vae._actor = copy.deepcopy(self.actor)
-                    res = eval_fn(self.get_policy())
+                    res = callback_fn(policy = self.get_policy(), 
+                                      train_buffer = train_buffer,
+                                      val_buffer = val_buffer,
+                                      args = self.args)
                     self.log_res((it + 1) // 1000, res)
     
                     
@@ -282,12 +288,12 @@ class AlgoTrainer(BaseAlgo):
             self.vae._actor = copy.deepcopy(self.actor)
             return self.vae
             
-    def train(self, replay_buffer, callback_fn=None):
+    def train(self, train_buffer, val_buffer, callback_fn=None):
         #"""
         #self.vae = torch.load("/tmp/vae_499999.pkl").to(self.args["device"])
-        self._train_vae(replay_buffer) 
+        self._train_vae(train_buffer) 
         self.vae.eval()
         if self.args["latent"]:
-            self._train_policy_latent(replay_buffer, callback_fn)
+            self._train_policy_latent(train_buffer, val_buffer, callback_fn)
         else:
-            self._train_policy(replay_buffer, callback_fn)
+            self._train_policy(train_buffer, val_buffer, callback_fn)

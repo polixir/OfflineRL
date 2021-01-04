@@ -4,18 +4,17 @@ from ray import tune
 from batchrl.algo import algo_select
 from batchrl.data import load_data_by_task
 from batchrl.data.revive import load_revive_buffer
-from batchrl.evaluation.gym import gym_policy_eval,gym_env_eval
-from batchrl.evaluation.fqe import fqe_eval_fn
+from batchrl.evaluation import EvaluationCallBackFn
 
 def training_function(config):
     algo_init_fn, algo_trainer_obj, algo_config = algo_select(config["kwargs"])
-    offlinebuffer = load_data_by_task(algo_config["task"])
+    train_buffer,val_buffer = load_data_by_task(algo_config["task"])
     algo_config.update(config)
     algo_config["device"] = "cuda"
     algo_init = algo_init_fn(algo_config)
     algo_trainer = algo_trainer_obj(algo_init, algo_config)
 
-    score = algo_trainer.train(offlinebuffer,callback_fn=gym_policy_eval(algo_config["task"], eval_episodes=10))
+    score = algo_trainer.train(train_buffer, val_buffer, callback_fn=EvaluationCallBackFn)
     
     return score
 
