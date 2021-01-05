@@ -21,7 +21,7 @@ real_data_ratio = 0.05
 transition_batch_size = 256
 policy_batch_size = 256
 data_collection_per_epoch = 50e3
-buffer_size = 1.2e6
+buffer_size = 1e6
 steps_per_epoch = 1000
 max_epoch = 200
 
@@ -47,8 +47,8 @@ params_tune = {
 
 #tune
 grid_tune = {
-    "buffer_size" : [1e6, 2e6],
-    "horizon" : [1, 2, 5, 10],
-    "lam" : [0.1, 0.5, 1, 2, 5, 10],
+    # "buffer_size" : [1e6, 2e6],
+    "horizon" : [1, 2, 5],
+    "lam" : [0.1, 0.5, 1, 2, 5],
     # "learnable_alpha" : [True, False],
 }
