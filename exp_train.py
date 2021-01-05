@@ -88,7 +88,7 @@ if __name__ == '__main__':
     others = split_task[3:]
     val_num = (train_num + 1) // 10
     algo = args.algo
-    exp_name = '-'.join([task_name, level, str(train_num), *others, algo])
+    exp_name = '-'.join([task_name, level, str(train_num), *others, algo, 'eval'])
 
     training_command = f'python BatchRL/examples/train_tune.py --algo_name {algo} --exp_name {exp_name} --task {task}'
     
