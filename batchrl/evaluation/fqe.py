@@ -141,16 +141,16 @@ def fqe_eval_fn():
     def fqe_eval(policy, buffer):
         Fqe = FQE(policy, buffer,
                   q_hidden_features=1024,
-                  q_hidden_layers=2)
+                  q_hidden_layers=4)
 
         critic = Fqe.train_estimator(discount=0.99,
-                                    target_update_period=50,
-                                    critic_lr=1e-4,
-                                    num_steps=10000,
-                                    polyak=0)
+                                     target_update_period=100,
+                                     critic_lr=1e-4,
+                                     num_steps=250000,
+                                     polyak=0)
 
         eval_size = 1024
-        batch = buffer.sample(eval_size)
+        batch = buffer[:eval_size]
         data = to_torch(batch, torch.float)
         o0, a0 = data.obs, data.act
         init_sa = torch.cat((o0,a0), -1).to(device)
