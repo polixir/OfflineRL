@@ -324,8 +324,8 @@ class AlgoTrainer(BaseAlgo):
     def get_model(self):
         return self.actor
     
-    def save_model(self, model_save_path):
-        torch.save(self.actor, model_save_path)
+    #def save_model(self, model_save_path):
+    #    torch.save(self.actor, model_save_path)
         
     def get_policy(self):
         return self.actor

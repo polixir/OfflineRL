@@ -39,5 +39,6 @@ def init_exp_logger(repo=None, experiment_name=None, flush_frequency=1):
             os.system(str("cd " + os.path.join(repo,"../") + "&& aim init"))
     
     aim_logger = aim.Session(repo = repo, experiment=experiment_name, flush_frequency=flush_frequency)
-
+    aim_logger.experiment_name = experiment_name
+    
     return aim_logger

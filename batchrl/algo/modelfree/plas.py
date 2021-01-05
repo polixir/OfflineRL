@@ -273,12 +273,6 @@ class AlgoTrainer(BaseAlgo):
                                       args = self.args)
                     self.log_res((it + 1) // 1000, res)
     
-                    
-    def get_model(self):
-        pass
-    
-    def save_model(self):
-        pass
     
     def get_policy(self):
         if self.args["latent"]:

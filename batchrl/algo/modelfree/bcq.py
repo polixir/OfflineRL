@@ -213,8 +213,8 @@ class AlgoTrainer(BaseAlgo):
 
         return self.get_policy()
 
-    def save_model(self, model_save_path):
-        torch.save(self.get_policy(), model_save_path)
+    #def save_model(self, model_save_path):
+    #    torch.save(self.get_policy(), model_save_path)
     
     def get_policy(self):
         return BCQPolicy(self.vae, self.jitter, self.q1)

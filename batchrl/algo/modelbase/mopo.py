@@ -188,8 +188,8 @@ class AlgoTrainer(BaseAlgo):
         transition.requires_grad_(False)   
         policy = self.train_policy(train_buffer, val_buffer, transition, callback_fn)
 
-    def save_model(self, model_save_path):
-        torch.save(self.get_policy(), model_save_path)
+    #def save_model(self, model_save_path):
+    #    torch.save(self.get_policy(), model_save_path)
     
     def get_policy(self):
         return self.actor
