@@ -1,8 +1,10 @@
 import os
 import uuid
+import json
 from abc import ABC, abstractmethod
 
 import torch
+from collections import OrderedDict
 from loguru import logger
 from batchrl.utils.exp import init_exp_logger
 from batchrl.utils.io import create_dir, download_helper, read_json
@@ -26,6 +28,8 @@ class BaseAlgo(ABC):
         self.exp_logger = init_exp_logger(repo = repo, experiment_name = exp_name)
         self.index_path = self.exp_logger.repo.index_path
         self.models_save_dir = os.path.join(self.index_path, "models")
+        self.metric_logs = OrderedDict()
+        self.metric_logs_path = os.path.join(self.index_path, "metric_logs.json")
         create_dir(self.models_save_dir)
 
         self.exp_logger.set_params(args, name='hparams')
@@ -36,7 +40,10 @@ class BaseAlgo(ABC):
         for k,v in result.items():
             logger.info('{} : {}',k, v)
             self.exp_logger.track(v, name=k.split(" ")[0], epoch=epoch,)
-
+        
+        self.metric_logs[str(epoch)] = result
+        with open(self.metric_logs_path,"w") as f:
+            json.dump(self.metric_logs,f)
         self.save_model(os.path.join(self.models_save_dir, str(epoch) + ".pt"))
             
     

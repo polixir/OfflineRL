@@ -15,7 +15,7 @@ def run_algo(**kwargs):
     algo_init = algo_init_fn(algo_config)
     algo_trainer = algo_trainer_obj(algo_init, algo_config)
 
-    algo_trainer.train(train_buffer, val_buffer, callback_fn=EvaluationCallBackFn)
+    algo_trainer.train(train_buffer, val_buffer, callback_fn=EvaluationCallBackFn())
 
     
 if __name__ == "__main__":

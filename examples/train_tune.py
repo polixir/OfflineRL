@@ -14,7 +14,7 @@ def training_function(config):
     algo_init = algo_init_fn(algo_config)
     algo_trainer = algo_trainer_obj(algo_init, algo_config)
 
-    score = algo_trainer.train(train_buffer, val_buffer, callback_fn=EvaluationCallBackFn)
+    score = algo_trainer.train(train_buffer, val_buffer, callback_fn=EvaluationCallBackFn())
     
     return score
 
