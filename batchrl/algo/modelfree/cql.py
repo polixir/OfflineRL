@@ -324,20 +324,23 @@ class AlgoTrainer(BaseAlgo):
     def get_model(self):
         return self.actor
     
-    def save_model(self, model_save_path):
-        torch.save(self.actor, model_save_path)
+    #def save_model(self, model_save_path):
+    #    torch.save(self.actor, model_save_path)
         
     def get_policy(self):
         return self.actor
     
-    def train(self, buffer, callback_fn):
+    def train(self, train_buffer, val_buffer, callback_fn):
         for epoch in range(1,self.args["max_epoch"]+1):
             for step in range(1,self.args["steps_per_epoch"]+1):
-                train_data = buffer.sample(self.args["batch_size"])
+                train_data = train_buffer.sample(self.args["batch_size"])
                 self._train(train_data)
             
-            res = callback_fn(self.get_policy())
-            #res = callback_fn(self.get_policy(), buffer)
+            res = callback_fn(policy = self.get_policy(), 
+                              train_buffer = train_buffer,
+                              val_buffer = val_buffer,
+                              args = self.args)
+
             self.log_res(epoch, res)
             
         return res["Reward_Mean"]

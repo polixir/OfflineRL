@@ -89,7 +89,7 @@ class FQE:
                          num_steps=10000,
                          polyak=0.95,
                         batch_size = 32):
-        writer = SummaryWriter('fqe')
+        #writer = SummaryWriter('fqe')
 
         batch = self.buffer.sample(batch_size)
         data = to_torch(batch, torch.float, device=self._device)
@@ -126,14 +126,14 @@ class FQE:
             critic_loss.backward()
             nn.utils.clip_grad_norm_(get_models_parameters(critic), 0.5)
             critic_optimizer.step()
-
-            writer.add_scalar('critic_loss', critic_loss.item(), t)
+        
+            #writer.add_scalar('critic_loss', critic_loss.item(), t)
             if t % target_update_period == 0:
                 with torch.no_grad():
                     for p, p_targ in zip(critic.parameters(), target_critic.parameters()):
                         p_targ.data.mul_(polyak)
                         p_targ.data.add_((1 - polyak) * p.data)
-        writer.close()
+        #writer.close()
         return critic
 
 def fqe_eval_fn():
@@ -141,16 +141,16 @@ def fqe_eval_fn():
     def fqe_eval(policy, buffer):
         Fqe = FQE(policy, buffer,
                   q_hidden_features=1024,
-                  q_hidden_layers=2)
+                  q_hidden_layers=4)
 
         critic = Fqe.train_estimator(discount=0.99,
-                                    target_update_period=50,
-                                    critic_lr=1e-4,
-                                    num_steps=10000,
-                                    polyak=0)
+                                     target_update_period=100,
+                                     critic_lr=1e-4,
+                                     num_steps=250000,
+                                     polyak=0)
 
         eval_size = 1024
-        batch = buffer.sample(eval_size)
+        batch = buffer[:eval_size]
         data = to_torch(batch, torch.float)
         o0, a0 = data.obs, data.act
         init_sa = torch.cat((o0,a0), -1).to(device)

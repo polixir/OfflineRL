@@ -142,10 +142,10 @@ class AlgoTrainer(BaseAlgo):
         self.lam = self.args['lam']
         self.device = self.args['device']
         
-    def train(self, buffer, callback_fn):
+    def train(self, train_buffer, val_buffer, callback_fn):
         for epoch in range(self.args['max_epoch']):
             for i in range(self.args['steps_per_epoch']):
-                batch_data = buffer.sample(self.batch_size)
+                batch_data = train_buffer.sample(self.batch_size)
                 batch_data.to_torch(device=self.device)
                 obs = batch_data['obs']
                 action = batch_data['act']
@@ -201,14 +201,20 @@ class AlgoTrainer(BaseAlgo):
                 self._sync_weight(self.target_q1, self.q1, soft_target_tau=self.args['soft_target_tau'])
                 self._sync_weight(self.target_q2, self.q2, soft_target_tau=self.args['soft_target_tau'])
                 
-            res = callback_fn(self.get_policy())
+            #res = callback_fn(self.get_policy())
+            
+            res = callback_fn(policy = self.get_policy(), 
+                              train_buffer = train_buffer,
+                              val_buffer = val_buffer,
+                              args = self.args)
+            
             res['kl_loss'] = kl_loss.item()
             self.log_res(epoch, res)
 
         return self.get_policy()
 
-    def save_model(self, model_save_path):
-        torch.save(self.get_policy(), model_save_path)
+    #def save_model(self, model_save_path):
+    #    torch.save(self.get_policy(), model_save_path)
     
     def get_policy(self):
         return BCQPolicy(self.vae, self.jitter, self.q1)

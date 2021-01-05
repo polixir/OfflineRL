@@ -183,13 +183,13 @@ class AlgoTrainer(BaseAlgo):
 
         self.device = args['device']
         
-    def train(self, buffer, callback_fn):
-        transition = self.train_transition(buffer)
+    def train(self, train_buffer, val_buffer, callback_fn):
+        transition = self.train_transition(train_buffer)
         transition.requires_grad_(False)   
-        policy = self.train_policy(buffer, transition, callback_fn)
+        policy = self.train_policy(train_buffer, val_buffer, transition, callback_fn)
 
-    def save_model(self, model_save_path):
-        torch.save(self.get_policy(), model_save_path)
+    #def save_model(self, model_save_path):
+    #    torch.save(self.get_policy(), model_save_path)
     
     def get_policy(self):
         return self.actor
@@ -235,7 +235,7 @@ class AlgoTrainer(BaseAlgo):
         self.transition.set_select(indexes)
         return self.transition
 
-    def train_policy(self, real_buffer, transition, callback_fn):
+    def train_policy(self, train_buffer, val_buffer, transition, callback_fn):
         real_batch_size = int(self.args['policy_batch_size'] * self.args['real_data_ratio'])
         model_batch_size = self.args['policy_batch_size']  - real_batch_size
         
@@ -244,7 +244,7 @@ class AlgoTrainer(BaseAlgo):
         for epoch in range(self.args['max_epoch']):
             # collect data
             with torch.no_grad():
-                obs = real_buffer.sample(int(self.args['data_collection_per_epoch']))['obs']
+                obs = train_buffer.sample(int(self.args['data_collection_per_epoch']))['obs']
                 obs = torch.tensor(obs, device=self.device)
                 for t in range(self.args['horizon']):
                     action = self.actor(obs).sample()
@@ -283,14 +283,18 @@ class AlgoTrainer(BaseAlgo):
 
             # update
             for _ in range(self.args['steps_per_epoch']):
-                batch = real_buffer.sample(real_batch_size)
+                batch = train_buffer.sample(real_batch_size)
                 model_batch = model_buffer.sample(model_batch_size)
                 batch.cat_(model_batch)
                 batch.to_torch(device=self.device)
 
                 self._sac_update(batch)
 
-            res = callback_fn(self.get_policy())
+            res = callback_fn(policy = self.get_policy(), 
+                              train_buffer = train_buffer,
+                              val_buffer = val_buffer,
+                              args = self.args)
+            
             res['uncertainty'] = uncertainty.mean().item()
             res['reward'] = reward.mean().item()
             self.log_res(epoch, res)

@@ -80,12 +80,12 @@ class AlgoTrainer(BaseAlgo):
         # Number of training iterations
         self.iterations = 0
 
-    def train(self, buffer, callback_fn):
+    def train(self, train_buffer, val_buffer, callback_fn):
         training_iters = 0
         while training_iters < self.args["max_timesteps"]:
             
             # Sample replay buffer
-            batch = buffer.sample(self.args["batch_size"])
+            batch = train_buffer.sample(self.args["batch_size"])
             batch = to_torch(batch, torch.float, device=self.args["device"])
             reward = batch.rew
             done = batch.done
@@ -126,7 +126,10 @@ class AlgoTrainer(BaseAlgo):
             training_iters += 1
             #print(training_iters ,self.args["eval_freq"])
             if training_iters % self.args["eval_freq"] == 0:
-                res = callback_fn(self.get_policy())
+                res = callback_fn(policy = self.get_policy(), 
+                                  train_buffer = train_buffer,
+                                  val_buffer = val_buffer,
+                                  args = self.args)
                 
                 self.log_res(training_iters // self.args["eval_freq"], res)
 
