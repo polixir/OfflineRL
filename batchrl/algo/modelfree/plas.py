@@ -50,7 +50,7 @@ def algo_init(args):
                                   latent_dim, 
                                   max_action,
                                   max_latent_action=2, 
-                                  phi=0.05).to(args['device'])
+                                  phi=args['phi']).to(args['device'])
         
     else:
         net_a = Net(layer_num = args["layer_num"], 

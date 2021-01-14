@@ -88,7 +88,7 @@ class FQE:
                          critic_lr=1e-5,
                          num_steps=10000,
                          polyak=0.95,
-                        batch_size = 32):
+                         batch_size=256):
         #writer = SummaryWriter('fqe')
 
         batch = self.buffer.sample(batch_size)
@@ -119,12 +119,13 @@ class FQE:
                 q_target = target_critic(torch.cat((o2, a2), -1)).detach()
                 current_discount = discount
                 backup = r + current_discount * q_target
+                backup = torch.clamp(backup, 0, 600)
             q = critic(torch.cat((o1, a1), -1))
             critic_loss = ((q - backup) ** 2).mean()
 
             critic_optimizer.zero_grad()
             critic_loss.backward()
-            nn.utils.clip_grad_norm_(get_models_parameters(critic), 0.5)
+            # nn.utils.clip_grad_norm_(get_models_parameters(critic), 0.5)
             critic_optimizer.step()
         
             #writer.add_scalar('critic_loss', critic_loss.item(), t)
@@ -149,7 +150,7 @@ def fqe_eval_fn():
                                      num_steps=250000,
                                      polyak=0)
 
-        eval_size = 1024
+        eval_size = 20000
         batch = buffer[:eval_size]
         data = to_torch(batch, torch.float)
         o0, a0 = data.obs, data.act

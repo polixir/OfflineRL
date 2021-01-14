@@ -44,13 +44,13 @@ def find_result(exp_name : str):
     return max_result
 
 def upload_json(exp_name : str):
-    target_ip = '10.200.0.9'
+    target_ip = '10.200.0.41'
     user_name = 'ubuntu'
     passwd = 'ubuntu'
-    template = 'sshpass -p {passwd} scp -o StrictHostKeyChecking=no {source_file} {user_name}@{target_ip}:~/batchrl_results/{exp_name}/{target_file}'
+    template = 'sshpass -p {passwd} scp -o StrictHostKeyChecking=no {source_file} {user_name}@{target_ip}:~/walker_eval/{exp_name}/{target_file}'
 
     # create folder in remote 
-    os.system(f'sshpass -p {passwd} ssh -o StrictHostKeyChecking=no {user_name}@{target_ip} "cd batchrl_results && mkdir {exp_name}"')
+    os.system(f'sshpass -p {passwd} ssh -o StrictHostKeyChecking=no {user_name}@{target_ip} "cd walker_eval && mkdir {exp_name}"')
 
     lib_path = os.path.abspath(os.path.dirname(__file__))
     aim_path = os.path.join(lib_path, 'batchrl_tmp', '.aim')
