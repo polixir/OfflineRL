@@ -122,10 +122,7 @@ class AlgoTrainer(BaseAlgo):
                     self._sync_weight(self.critic_target, self.critic, 1.0)
                     self._sync_weight(self.actor_target, self.actor, 1.0)
             
-            res = callback_fn(policy=self.get_policy(), 
-                              train_buffer=train_buffer,
-                              val_buffer=val_buffer,
-                              args=self.args)
+            res = callback_fn(self.get_policy())
             
             self.log_res(epoch, res)
 

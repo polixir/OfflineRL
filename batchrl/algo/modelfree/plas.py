@@ -50,7 +50,7 @@ def algo_init(args):
                                   latent_dim, 
                                   max_action,
                                   max_latent_action=2, 
-                                  phi=0.05).to(args['device'])
+                                  phi=args['phi']).to(args['device'])
         
     else:
         net_a = Net(layer_num = args["layer_num"], 
@@ -212,10 +212,7 @@ class AlgoTrainer(BaseAlgo):
                     self.eval_policy()
                 else:
                     self.vae._actor = copy.deepcopy(self.actor)
-                    res = callback_fn(policy = self.get_policy(), 
-                                      train_buffer = train_buffer,
-                                      val_buffer = val_buffer,
-                                      args = self.args)
+                    res = callback_fn(self.get_policy())
                     self.log_res((it + 1) // 1000, res)
                     
     def _train_policy_latent(self, train_buffer, val_buffer, callback_fn):

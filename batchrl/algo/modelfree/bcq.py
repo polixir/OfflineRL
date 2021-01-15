@@ -203,10 +203,7 @@ class AlgoTrainer(BaseAlgo):
                 
             #res = callback_fn(self.get_policy())
             
-            res = callback_fn(policy = self.get_policy(), 
-                              train_buffer = train_buffer,
-                              val_buffer = val_buffer,
-                              args = self.args)
+            res = callback_fn(self.get_policy())
             
             res['kl_loss'] = kl_loss.item()
             self.log_res(epoch, res)

@@ -17,12 +17,6 @@ from tianshou.data import to_numpy, to_torch
 from batchrl.utils.net.common import MLP
 from batchrl.utils.net.continuous import DistributionalCritic
 
-def get_models_parameters(*models):
-    parameters = []
-    for model in models:
-        parameters += list(model.parameters())
-    return parameters
-
 class FQE:
     # https://arxiv.org/abs/2007.09055
     # Hyperparameter Selection for Offline Reinforcement Learning
@@ -39,7 +33,9 @@ class FQE:
         self.critic_hidden_layers = q_hidden_layers
         self._device = device
 
-    def train_estimator(self, discount=0.99,
+    def train_estimator(self,
+                        init_critic=None, 
+                        discount=0.99,
                         target_update_period=100,
                         critic_lr=1e-4,
                         num_steps=250000,
@@ -52,10 +48,10 @@ class FQE:
         max_value = (1.2 * max_reward + 0.8 * min_reward) / (1 - discount)
         min_value = (1.2 * min_reward + 0.8 * max_reward) / (1 - discount)
 
-        batch = self.buffer.sample(batch_size)
-        data = to_torch(batch, torch.float32, device=self._device)
+        data = self.buffer.sample(batch_size)
         input_dim = data.obs.shape[-1] + data.act.shape[-1]
         critic = MLP(input_dim, 1, self.critic_hidden_features, self.critic_hidden_layers).to(self._device)
+        if init_critic is not None: critic.load_state_dict(init_critic.state_dict())
         critic_optimizer = torch.optim.Adam(critic.parameters(), lr=critic_lr)
         target_critic = deepcopy(critic).to(self._device)
         target_critic.requires_grad_(False)

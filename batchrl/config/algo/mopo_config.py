@@ -47,7 +47,6 @@ params_tune = {
 
 #tune
 grid_tune = {
-    "buffer_size" : [1e6, 2e6],
     "horizon" : [1, 2, 5],
     "lam" : [0.1, 0.5, 1, 2, 5, 10, 100],
     "learnable_alpha" : [True, False],
