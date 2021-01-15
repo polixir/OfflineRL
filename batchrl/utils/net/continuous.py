@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from torch import nn
-from batchrl.utils.net.common import BasePolicy
+from batchrl.utils.net.common import BasePolicy, MLP
 from typing import Any, Dict, Tuple, Union, Optional, Sequence
 
 from batchrl.utils.data import to_torch, to_torch_as, to_numpy
@@ -233,3 +233,41 @@ class RecurrentCritic(nn.Module):
             s = torch.cat([s, a], dim=1)
         s = self.fc2(s)
         return s
+
+class DistributionalCritic(torch.nn.Module):
+    def __init__(self, obs_dim, action_dim, atoms, features, layers, min_value, max_value):
+        super().__init__()
+        self.atoms = atoms
+        self.min_value = min_value
+        self.max_value = max_value
+
+        self.net = MLP(obs_dim + action_dim, atoms, features, layers)
+
+        self.register_buffer('z', torch.linspace(min_value, max_value, atoms))
+        self.delta_z = (max_value - min_value) / (atoms - 1)
+
+    def forward(self, obs, action, with_q=False):
+        obs_action = torch.cat([obs, action], dim=-1)
+        logits = self.net(obs_action)
+        p = torch.softmax(logits, dim=-1)
+        if with_q:
+            q = torch.sum(p * self.z, dim=-1, keepdim=True)
+            return p, q
+        else:
+            return p
+
+    @torch.no_grad()
+    def get_target(self, obs, action, reward, discount):
+        p = self(obs, action) # [*B, N]
+
+        # shift the atoms by reward
+        target_z = reward + discount * self.z # [*B, N]
+        target_z = torch.clamp(target_z, self.min_value, self.max_value) # [*B, N]
+
+        # reproject the value to the nearby atoms
+        target_z = target_z.unsqueeze(dim=-1) # [*B, N, 1]
+        distance = torch.abs(target_z - self.z) # [*B, N, N]
+        ratio = torch.clamp(1 - distance / self.delta_z, 0, 1) # [*B, N, N]
+        target_p = torch.sum(p.unsqueeze(dim=-1) * ratio, dim=-2) # [*B, N]
+
+        return target_p

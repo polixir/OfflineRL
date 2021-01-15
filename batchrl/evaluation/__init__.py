@@ -24,6 +24,9 @@ class EvaluationCallBack:
                  val_buffer = None,
                  args = None,
                  **kwargs):
+
+        self.epoch += 1
+        buffer = val_buffer or train_buffer
         
         if isinstance(callback_type, str):
             callback_type_list = [callback_type,]
@@ -42,9 +45,9 @@ class EvaluationCallBack:
             if not ray.is_initialized():
                 ray.init(ignore_reinit_error=True)
             eval_res.update(test_on_real_env(policy, env))
-        if self.epoch % 10 == 0:
+        if self.epoch % 25 == 0:
             if "fqe" in callback_type_list:
-                eval_res.update(fqe_eval_fn()(policy, val_buffer))
+                eval_res.update(fqe_eval_fn()(policy, buffer))
             if "ope" in callback_type_list:
                 pass
         for callback_fn in callback_type_list:
@@ -52,10 +55,8 @@ class EvaluationCallBack:
                 eval_res.update(callback_fn(policy, 
                                             train_buffer,
                                             env,
-                                            val_buffer,
+                                            buffer,
                                             args,
                                             **kwargs))
-                
-        self.epoch += 1
 
         return eval_res
