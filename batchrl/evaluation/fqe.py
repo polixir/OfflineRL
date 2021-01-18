@@ -77,11 +77,12 @@ class FQE:
                  q_hidden_features=None,
                  q_hidden_layers=None,
                  ):
-        self.policy = policy
+        self.policy = deepcopy(policy)
         self.buffer = buffer
         self.critic_hidden_features = q_hidden_features
         self.critic_hidden_layers = q_hidden_layers
-        self._device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self._device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.policy = self.policy.to(self._device)
 
     def train_estimator(self, discount=0.99,
                          target_update_period=100,

@@ -18,7 +18,7 @@ phi = 0.05
 lam = 0.75
 
 batch_size = 100
-steps_per_epoch = 5000
+steps_per_epoch = 1000
 max_epoch = 200
 
 vae_lr = 1e-3

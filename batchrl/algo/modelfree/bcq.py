@@ -77,7 +77,8 @@ class BCQPolicy(torch.nn.Module):
         raise NotImplementedError
     
     @torch.no_grad()
-    def get_action(self, state : np.ndarray):
+    def get_action(self, state):
+        is_numpy = isinstance(state, np.ndarray)
         param = next(self.vae.parameters())
         state = torch.as_tensor(state).to(param)
         repeat_state = torch.repeat_interleave(state.unsqueeze(0), 100, 0)
@@ -86,7 +87,7 @@ class BCQPolicy(torch.nn.Module):
         q = self.q_net(state_action)
         index = torch.argmax(q, dim=0).squeeze(dim=-1)
         action = multiple_actions[index, np.arange(index.shape[0])]
-        return action.cpu().numpy()
+        return action.cpu().numpy() if is_numpy else action
 
 
 def algo_init(args):
