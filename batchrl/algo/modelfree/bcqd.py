@@ -126,10 +126,7 @@ class AlgoTrainer(BaseAlgo):
             training_iters += 1
             #print(training_iters ,self.args["eval_freq"])
             if training_iters % self.args["eval_freq"] == 0:
-                res = callback_fn(policy = self.get_policy(), 
-                                  train_buffer = train_buffer,
-                                  val_buffer = val_buffer,
-                                  args = self.args)
+                res = callback_fn(self.get_policy())
                 
                 self.log_res(training_iters // self.args["eval_freq"], res)
 

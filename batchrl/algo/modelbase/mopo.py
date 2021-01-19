@@ -187,9 +187,6 @@ class AlgoTrainer(BaseAlgo):
         transition = self.train_transition(train_buffer)
         transition.requires_grad_(False)   
         policy = self.train_policy(train_buffer, val_buffer, transition, callback_fn)
-
-    #def save_model(self, model_save_path):
-    #    torch.save(self.get_policy(), model_save_path)
     
     def get_policy(self):
         return self.actor
@@ -290,10 +287,7 @@ class AlgoTrainer(BaseAlgo):
 
                 self._sac_update(batch)
 
-            res = callback_fn(policy = self.get_policy(), 
-                              train_buffer = train_buffer,
-                              val_buffer = val_buffer,
-                              args = self.args)
+            res = callback_fn(self.get_policy())
             
             res['uncertainty'] = uncertainty.mean().item()
             res['reward'] = reward.mean().item()

@@ -1,8 +1,8 @@
 import numpy as np
 from loguru import logger
 
-from batchrl.utils.data import SampleBatch,get_scaler
-from batchrl.utils.data import BufferDataset,BufferDataloader
+from batchrl.utils.data import SampleBatch, get_scaler
+from batchrl.utils.data import BufferDataset, BufferDataloader
 
     
 def load_revive_buffer(data_dir):

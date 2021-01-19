@@ -11,7 +11,7 @@ from torch.utils.data import dataloader
 def to_array_as(x, y):    
     if isinstance(x, torch.Tensor) and isinstance(y, np.ndarray):
         return to_numpy(x)
-    elif isinstance(x, np.ndarray) and isinstance(y, torch.Tenso):
+    elif isinstance(x, np.ndarray) and isinstance(y, torch.Tensor):
         return to_torch_as(x)
     else:
         return x
@@ -49,7 +49,7 @@ class BufferDataloader(dataloader.DataLoader):
             return self.buffer_loader.__next__()
     
 class SampleBatch(Batch):
-    def sample(self,batch_size):
+    def sample(self, batch_size):
         length = len(self)
         assert 1 <= batch_size
         
