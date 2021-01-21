@@ -43,11 +43,11 @@ class EvaluationCallBack:
             if not ray.is_initialized():
                 ray.init(ignore_reinit_error=True)
             eval_res.update(test_on_real_env(policy, env))
-        if self.epoch % 25 == 0:
-            if "fqe" in callback_type_list:
-                eval_res.update(fqe_eval_fn()(policy, val_buffer))
-            if "ope" in callback_type_list:
-                pass
+        # if self.epoch % 25 == 0:
+        #     if "fqe" in callback_type_list:
+        #         eval_res.update(fqe_eval_fn()(policy, val_buffer))
+        #     if "ope" in callback_type_list:
+        #         pass
         for callback_fn in callback_type_list:
             if not isinstance(callback_fn, str):
                 eval_res.update(callback_fn(policy, 

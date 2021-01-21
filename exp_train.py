@@ -15,7 +15,7 @@ def upload_result(task_name : str, algo_name : str, result : int, ip : str):
     endpoint = "https://oss-cn-shanghai.aliyuncs.com"
     auth = oss2.Auth(access_key_id, access_key_secret)
     bucket = oss2.Bucket(auth, endpoint, bucket_name)
-    bucket.put_object_from_file(os.path.join("eval_res", file_name), os.path.join('/tmp', file_name)) 
+    bucket.put_object_from_file(os.path.join("exp_res", file_name), os.path.join('/tmp', file_name)) 
 
 def get_host_ip():
     import socket
@@ -98,4 +98,4 @@ if __name__ == '__main__':
     ip = get_host_ip()
     r = int(find_result(exp_name))
     upload_result('-'.join([task_name, level, str(train_num)]), algo, r, ip)
-    upload_json(exp_name)
+    # upload_json(exp_name)
