@@ -6,7 +6,6 @@ from loguru import logger
 from batchrl.utils.logger import log_path
 from batchrl.utils.io import create_dir, download_helper, read_json
 
-from batchrl.data.d4rl import load_d4rl_buffer
 from batchrl.data.revive import load_revive_buffer
 
 dataset_dir = os.path.join(log_path(),"./batchrl_datasets")
@@ -27,6 +26,8 @@ def get_eval_data_name(train_data_name):
 
 def load_data_by_task(task):
     if task.startswith("d4rl"):
+        from batchrl.data.d4rl import load_d4rl_buffer
+        
         task = task[5:]
         train_buffer = load_d4rl_buffer(task)
         val_buffer = None

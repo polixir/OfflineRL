@@ -40,7 +40,7 @@ lagrange_thresh=10.0
 
 # extra params
 num_random=10
-type_q_backup= "max"
+type_q_backup= "none"
 q_backup_lmbda = 0.75
 deterministic_backup=False
 
@@ -57,9 +57,9 @@ params_tune = {
 
 #tune
 grid_tune = {
-    "actor_lr" : [1e-4, 3e-4],
+    #"actor_lr" : [1e-4, 3e-4],
     "min_q_version" : [2, 3],
     "min_q_weight" : [5, 10],
     "lagrange_thresh" : [-1, 2, 5, 10],
-    "type_q_backup" : ["max", "none"],
+    #"type_q_backup" : ["max", "none"],
 }

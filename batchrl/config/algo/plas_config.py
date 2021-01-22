@@ -16,8 +16,8 @@ vae_kl_weight = 0.5
 
 
 latent = True
-layer_num = 5
-actor_batch_size = 100
+layer_num = 2
+actor_batch_size = 128
 hidden_layer_size = 256
 actor_iterations = 500000
 vae_lr = 1e-4
