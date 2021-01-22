@@ -218,7 +218,7 @@ class AlgoTrainer(BaseAlgo):
                 if new_loss < old_loss:
                     change = True
                     val_losses[i] = new_loss
-            break
+
             if change:
                 cnt = 0
             else:
