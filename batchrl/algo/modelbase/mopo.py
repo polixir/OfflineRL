@@ -218,13 +218,13 @@ class AlgoTrainer(BaseAlgo):
                 if new_loss < old_loss:
                     change = True
                     val_losses[i] = new_loss
-
+            break
             if change:
                 cnt = 0
             else:
                 cnt += 1
 
-            if cnt >= 3:
+            if cnt >= 5:
                 break
         
         val_losses = self._eval_transition(self.transition, valdata)
@@ -254,7 +254,9 @@ class AlgoTrainer(BaseAlgo):
                     next_obses_mode = next_obs_dists.mean[:, :, :-1]
                     next_obs_mean = torch.mean(next_obses_mode, dim=0)
                     diff = next_obses_mode - next_obs_mean
-                    uncertainty = torch.max(torch.norm(diff, dim=-1, keepdim=True), dim=0)[0]
+                    disagreement_uncertainty = torch.max(torch.norm(diff, dim=-1, keepdim=True), dim=0)[0]
+                    aleatoric_uncertainty = torch.max(torch.norm(next_obs_dists.stddev, dim=-1, keepdim=True), dim=0)[0]
+                    uncertainty = disagreement_uncertainty if self.args['uncertainty_mode'] == 'disagreement' else aleatoric_uncertainty
 
                     model_indexes = np.random.randint(0, next_obses.shape[0], size=(obs.shape[0]))
                     next_obs = next_obses[model_indexes, np.arange(obs.shape[0])]
@@ -290,6 +292,8 @@ class AlgoTrainer(BaseAlgo):
             res = callback_fn(self.get_policy())
             
             res['uncertainty'] = uncertainty.mean().item()
+            res['disagreement_uncertainty'] = disagreement_uncertainty.mean().item()
+            res['aleatoric_uncertainty'] = aleatoric_uncertainty.mean().item()
             res['reward'] = reward.mean().item()
             self.log_res(epoch, res)
 
