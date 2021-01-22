@@ -371,10 +371,10 @@ class AutoOPECallBackFunction(CallBackFunction):
             data_train = to_torch(data_train, device=device)
 
             nll_Auto = -torch.mean(
-                self.trainsition.log_prob(data_train.obs,
-                                          data_train.act,
-                                          data_train.obs_next,
-                                          data_train.rew)
+                self.trainsition.log_prob_r(data_train.obs,
+                                            data_train.act,
+                                            data_train.obs_next,
+                                            data_train.rew)
             )
 
             optim_Auto.zero_grad()
@@ -386,10 +386,10 @@ class AutoOPECallBackFunction(CallBackFunction):
                 data_val = to_torch(data_val, device=device)
                 self.trainsition.eval()
                 nll_val_Auto = -torch.mean(
-                    self.trainsition.log_prob(data_val.obs,
-                                              data_val.act,
-                                              data_val.obs_next,
-                                              data_val.rew)
+                    self.trainsition.log_prob_r(data_val.obs,
+                                                data_val.act,
+                                                data_val.obs_next,
+                                                data_val.rew)
                 )
                 print('batch_num : {} | lr : {:.2e} |\tAuto : nll_val {:.2f} |'.format(
                         i, scheduler_Auto.get_lr()[0], nll_val_Auto / OUTPUT_DIM))
@@ -411,14 +411,14 @@ class AutoOPECallBackFunction(CallBackFunction):
 
             self.trainsition.eval()
             with torch.no_grad():
-                ret = torch.zeros(0, device=device)
+                ret = 0
                 for t in range(200):
                     action = policy.get_action(obs)
                     obs, r = self.trainsition.forward_r(obs, action)
                     ret += (0.995 ** t) * r
 
             res = OrderedDict()
-            res["Auto-OPE"] = torch.mean(ret).cpu().item()
+            res["Auto-OPE"] = (torch.nansum(ret) / (1 - torch.isnan(ret).float()).sum()).cpu().item()
             return res
         else:
             return {}
