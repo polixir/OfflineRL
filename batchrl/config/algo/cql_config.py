@@ -17,7 +17,7 @@ policy_bc_steps = 40000
 
 batch_size = 256
 hidden_layer_size = 256
-layer_num = 5
+layer_num = 2
 actor_lr=1E-4
 critic_lr=3E-4
 reward_scale=1
