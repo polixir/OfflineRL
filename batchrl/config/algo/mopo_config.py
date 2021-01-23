@@ -8,8 +8,7 @@ obs_shape = None
 act_shape = None
 max_action = None
 
-
-hidden_layer_size = 200
+hidden_layer_size = 256
 hidden_layers = 2
 transition_layers = 4
 
@@ -26,6 +25,7 @@ steps_per_epoch = 1000
 max_epoch = 200
 
 learnable_alpha = True
+uncertainty_mode = 'aleatoric'
 transition_lr = 1e-3
 actor_lr = 3e-4
 critic_lr = 3e-4
@@ -47,8 +47,7 @@ params_tune = {
 
 #tune
 grid_tune = {
-    # "buffer_size" : [1e6, 2e6],
-    "horizon" : [1, 2, 5],
-    "lam" : [0.1, 0.5, 1, 2, 5],
-    # "learnable_alpha" : [True, False],
+    "horizon" : [1, 5],
+    "lam" : [0.5, 1, 2, 5],
+    "uncertainty_mode" : ['aleatoric', 'disagreement'],
 }

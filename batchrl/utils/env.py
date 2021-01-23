@@ -1,7 +1,6 @@
 import gym
 import porl
 
-
 def get_env(task):
     try:
         task_name = task.strip().split("-")[0]
@@ -13,15 +12,13 @@ def get_env(task):
             env = porl.make("Hopper-v3")
         elif task.startswith("Walker2d-v3"):   
             env = porl.make("Walker2d-v3")
+        elif task.startswith('d4rl'):
+            import d4rl
+            env = gym.make(task[5:])
         else:
-            try:
-                import d4rl
-                env = gym.make(task)
-            except:
-                raise NotImplementedError
+            raise NotImplementedError
 
     return env
-
 
 def get_env_shape(task):
     env = get_env(task)

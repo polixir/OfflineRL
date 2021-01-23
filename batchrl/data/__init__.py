@@ -6,30 +6,32 @@ from loguru import logger
 from batchrl.utils.logger import log_path
 from batchrl.utils.io import create_dir, download_helper, read_json
 
+from batchrl.data.revive import load_revive_buffer
+
 dataset_dir = os.path.join(log_path(),"./batchrl_datasets")
 create_dir(dataset_dir)
 
 def get_eval_data_name(train_data_name):
-    eval_data_name = train_data_name.replace("train","val")
+    eval_data_name = train_data_name.replace("train", "val")
     if "9999" in train_data_name:
-        eval_data_name = eval_data_name.replace("9999","1000")
+        eval_data_name = eval_data_name.replace("9999", "1000")
     elif "999" in train_data_name:
-        eval_data_name = eval_data_name.replace("999","100")
+        eval_data_name = eval_data_name.replace("999", "100")
     elif "99" in train_data_name:
-        eval_data_name = eval_data_name.replace("99","10")
+        eval_data_name = eval_data_name.replace("99", "10")
     else:
         pass
     
     return eval_data_name
 
-
 def load_data_by_task(task):
-    time.sleep(random.random()*10)
     if task.startswith("d4rl"):
-        pass
-    else:
-        from batchrl.data.revive import load_revive_buffer
+        from batchrl.data.d4rl import load_d4rl_buffer
         
+        task = task[5:]
+        train_buffer = load_d4rl_buffer(task)
+        val_buffer = None
+    else:
         data_map_path = os.path.join(dataset_dir, "data_map.json")
         
         if not os.path.exists(data_map_path):
@@ -62,14 +64,16 @@ def load_data_by_task(task):
                 data_url = data_map[train_data_name]
                 logger.info('Download {}', data_url)
                 download_res = download_helper(data_url, train_data_path)
-                
-            if not os.path.exists(eval_data_path):
-                data_url = data_map[eval_data_name]
-                logger.info('Download {}', data_url)
-                download_res = download_helper(data_url, eval_data_path)
-
-            
             train_buffer = load_revive_buffer(train_data_path)
-            val_buffer = load_revive_buffer(eval_data_path)
+                
+            try:
+                if not os.path.exists(eval_data_path):
+                    data_url = data_map[eval_data_name]
+                    logger.info('Download {}', data_url)
+                    download_res = download_helper(data_url, eval_data_path)
 
-            return train_buffer, val_buffer
+                val_buffer = load_revive_buffer(eval_data_path)
+            except:
+                val_buffer = None
+
+    return train_buffer, val_buffer
