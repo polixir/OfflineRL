@@ -3,19 +3,22 @@ import os
 import json
 import oss2
 
-def upload_result(task_name : str, algo_name : str, result : int, ip : str):
+def upload_result(task_name : str, algo_name : str, result : int, ip : str, best_parameter : dict):
     file_name = task_name + ',' + algo_name + '.txt'
     with open(os.path.join('/tmp', file_name), 'w') as f:
         f.write(str(result))
         f.write('\n')
         f.write(ip)
+        for k, v in best_parameter.items():
+            f.write('\n')
+            f.write(f'{k} : {v}')
     access_key_id  = "LTAIGoWWsroWIQAo"
     access_key_secret = "tYcybZDpgA48DSXrGpCA6kxEcbIrZM"
     bucket_name = "polixir-ai"
     endpoint = "https://oss-cn-shanghai.aliyuncs.com"
     auth = oss2.Auth(access_key_id, access_key_secret)
     bucket = oss2.Bucket(auth, endpoint, bucket_name)
-    bucket.put_object_from_file(os.path.join("exp_res", file_name), os.path.join('/tmp', file_name)) 
+    bucket.put_object_from_file(os.path.join("final_res", file_name), os.path.join('/tmp', file_name)) 
 
 def get_host_ip():
     import socket
@@ -34,14 +37,18 @@ def find_result(exp_name : str):
     aim_path = os.path.join(lib_path, 'batchrl_tmp', '.aim')
     exp_path = os.path.join(aim_path, exp_name)
     max_result = - float('inf')
+    best_parameter = {}
     for name in os.listdir(exp_path):
         if len(name) > 6: # not index
             data_file = os.path.join(exp_path, name, 'objects', 'map', 'dictionary.log')
             with open(data_file, 'r') as f:
                 data = json.load(f)
             result = data['__METRICS__']['Reward_Mean_Env'][0]['values']['last']
-            max_result = max(result, max_result)
-    return max_result
+            if result > max_result:
+                max_result = result
+                grid_search_keys = list(data['hparams']['grid_tune'].keys())
+                best_parameter = {k : data['hparams'][k] for k in grid_search_keys}
+    return max_result, best_parameter
 
 def upload_json(exp_name : str):
     target_ip = '10.200.0.41'
@@ -88,7 +95,7 @@ if __name__ == '__main__':
     others = split_task[3:]
     val_num = (train_num + 1) // 10
     algo = args.algo
-    exp_name = '-'.join([task_name, level, str(train_num), *others, algo, 'eval'])
+    exp_name = '-'.join([task_name, level, str(train_num), *others, algo, 'final'])
 
     training_command = f'python BatchRL/examples/train_tune.py --algo_name {algo} --exp_name {exp_name} --task {task}'
     
@@ -96,6 +103,6 @@ if __name__ == '__main__':
     os.system(training_command)
 
     ip = get_host_ip()
-    r = int(find_result(exp_name))
+    r, best_parameter = int(find_result(exp_name))
     upload_result('-'.join([task_name, level, str(train_num)]), algo, r, ip)
     # upload_json(exp_name)
