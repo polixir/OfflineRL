@@ -48,7 +48,7 @@ def find_result(exp_name : str):
                 max_result = result
                 grid_search_keys = list(data['hparams']['grid_tune'].keys())
                 best_parameter = {k : data['hparams'][k] for k in grid_search_keys}
-    return max_result, best_parameter
+    return int(max_result), best_parameter
 
 def upload_json(exp_name : str):
     target_ip = '10.200.0.41'
@@ -103,6 +103,6 @@ if __name__ == '__main__':
     os.system(training_command)
 
     ip = get_host_ip()
-    r, best_parameter = int(find_result(exp_name))
-    upload_result('-'.join([task_name, level, str(train_num)]), algo, r, ip)
+    r, best_parameter = find_result(exp_name)
+    upload_result('-'.join([task_name, level, str(train_num)]), algo, r, ip, best_parameter)
     # upload_json(exp_name)

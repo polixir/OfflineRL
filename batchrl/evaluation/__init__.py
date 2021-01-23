@@ -53,11 +53,13 @@ class OnlineCallBackFunction(CallBackFunction):
 
     def __call__(self, policy):
         assert self.is_initialized, "`initialize` should be called before callback."
-        policy = deepcopy(policy).cpu()
+        self.call_count += 1
         eval_res = OrderedDict()
-        if not ray.is_initialized():
-            ray.init(ignore_reinit_error=True)
-        eval_res.update(test_on_real_env(policy, self.env))
+        if self.call_count % 25 == 0:
+            policy = deepcopy(policy).cpu()
+            if not ray.is_initialized():
+                ray.init(ignore_reinit_error=True)
+            eval_res.update(test_on_real_env(policy, self.env, number_of_runs=1000))
         return eval_res
 
 class FQECallBackFunction(CallBackFunction):
@@ -427,7 +429,7 @@ class AutoOPECallBackFunction(CallBackFunction):
 def get_defalut_callback(*args, **kwargs):
     return CallBackFunctionList([
         OnlineCallBackFunction(*args, **kwargs),
-        FQECallBackFunction(*args, **kwargs),
-        MBOPECallBackFunction(*args, **kwargs),
-        AutoOPECallBackFunction(*args, **kwargs),
+        # FQECallBackFunction(*args, **kwargs),
+        # MBOPECallBackFunction(*args, **kwargs),
+        # AutoOPECallBackFunction(*args, **kwargs),
     ])

@@ -25,6 +25,7 @@ def get_eval_data_name(train_data_name):
     return eval_data_name
 
 def load_data_by_task(task):
+    time.sleep(random.random() * 10)
     if task.startswith("d4rl"):
         from batchrl.data.d4rl import load_d4rl_buffer
         
@@ -39,7 +40,7 @@ def load_data_by_task(task):
             data = download_helper(url, data_map_path)
             
         data_map = read_json(data_map_path)
-        if task not in data_map.keys():
+        if all([not task in k for k in data_map.keys()]):
             url = "https://polixir-ai.oss-cn-shanghai.aliyuncs.com/datasets/offline/data_map.json"
             data = download_helper(url, data_map_path)
             data_map = read_json(data_map_path)
