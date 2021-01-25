@@ -340,4 +340,4 @@ class AlgoTrainer(BaseAlgo):
 
             self.log_res(epoch, res)
             
-        return res["Reward_Mean"]
+        return self.get_policy()
