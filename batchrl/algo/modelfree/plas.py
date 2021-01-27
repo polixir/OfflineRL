@@ -161,7 +161,7 @@ class AlgoTrainer(BaseAlgo):
         #torch.save(self.vae, "/tmp/vae_"+str(i)+".pkl") 
 
         
-    def _train_policy(self, train_buffer, callback_fn):
+    def _train_policy(self, train_buffer, val_buffer, callback_fn):
         for it in range(self.args["actor_iterations"]):
             batch = train_buffer.sample(self.args["actor_batch_size"])
             batch = to_torch(batch, torch.float, device=self.args["device"])
