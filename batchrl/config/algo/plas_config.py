@@ -17,7 +17,7 @@ vae_kl_weight = 0.5
 
 latent = True
 layer_num = 2
-actor_batch_size = 128
+actor_batch_size = 100
 hidden_layer_size = 256
 actor_iterations = 500000
 vae_lr = 1e-4
@@ -42,6 +42,6 @@ params_tune = {
 
 #tune
 grid_tune = {
-    "actor_batch_size" : [128, 256],
-    "phi" : [0.05, 0.1, 0.2, 0.4]
+    "latent" : [True, False],
+    "phi" : [0.05, 0.1, 0.2, 0.4],
 }
