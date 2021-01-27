@@ -13,25 +13,29 @@ if __name__ == '__main__':
         for exp_id in os.listdir(log_folder):
             if exp_id == 'index': continue
             exp_folder = os.path.join(log_folder, exp_id)
-            os.system(mkdir_command_template.format(target_file='/'.join([logname, exp_id])))
 
-            # load json
-            with open(os.path.join(exp_folder, 'metric_logs.json'), 'r') as f:
-                metrics = json.load(f)
+            try:
+                # load json
+                with open(os.path.join(exp_folder, 'metric_logs.json'), 'r') as f:
+                    metrics = json.load(f)
 
-            # find groundtruth
-            gt = {}
-            for k, v in metrics.items():
-                if not "Reward_Mean_Env" in v.keys(): continue
-                gt[k + '.pt'] = v["Reward_Mean_Env"]
+                # find groundtruth
+                gt = {}
+                for k, v in metrics.items():
+                    if not "Reward_Mean_Env" in v.keys(): continue
+                    gt[k + '.pt'] = v["Reward_Mean_Env"]
 
-            # save gt
-            gt_file = '/tmp/gt.json'
-            with open(gt_file, 'w') as f:
-                json.dump(gt, f, indent=2)
-            os.system(copy_command_template.format(source_file=gt_file, target_file='/'.join([logname, exp_id, 'gt.json'])))
+                os.system(mkdir_command_template.format(target_file='/'.join([logname, exp_id])))
 
-            # copy model
-            os.system(mkdir_command_template.format(target_file='/'.join([logname, exp_id, 'models'])))
-            for model_file in gt.keys():
-                os.system(copy_command_template.format(source_file=os.path.join(exp_folder, 'models', model_file), target_file='/'.join([logname, exp_id, 'models', model_file])))
+                # save gt
+                gt_file = '/tmp/gt.json'
+                with open(gt_file, 'w') as f:
+                    json.dump(gt, f, indent=2)
+                os.system(copy_command_template.format(source_file=gt_file, target_file='/'.join([logname, exp_id, 'gt.json'])))
+
+                # copy model
+                os.system(mkdir_command_template.format(target_file='/'.join([logname, exp_id, 'models'])))
+                for model_file in gt.keys():
+                    os.system(copy_command_template.format(source_file=os.path.join(exp_folder, 'models', model_file), target_file='/'.join([logname, exp_id, 'models', model_file])))
+            except Exception as e:
+                print(e)
