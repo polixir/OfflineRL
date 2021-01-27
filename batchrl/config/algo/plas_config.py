@@ -42,6 +42,6 @@ params_tune = {
 
 #tune
 grid_tune = {
-    # "actor_batch_size" : [128, 256],
-    "phi" : [0.05, 0.1, 0.2, 0.5]
+	"latent" : [True, False],
+    "phi" : [0.05, 0.1, 0.2, 0.5],
 }
