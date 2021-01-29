@@ -57,7 +57,7 @@ class FQE:
         target_critic.requires_grad_(False)
 
         print('Training Fqe...')
-        for t in tqdm(range(num_steps)):
+        for t in range(num_steps):
             batch = self.buffer.sample(batch_size)
             data = to_torch(batch, torch.float32, device=self._device)
             r = data.rew
