@@ -1,10 +1,10 @@
 import fire
 from ray import tune
 
-from batchrl.algo import algo_select
-from batchrl.data import load_data_by_task
-from batchrl.data.revive import load_revive_buffer
-from batchrl.evaluation import get_defalut_callback
+from offlinerl.algo import algo_select
+from offlinerl.data import load_data_by_task
+from offlinerl.data.revive import load_revive_buffer
+from offlinerl.evaluation import get_defalut_callback
 
 def training_function(config):
     algo_init_fn, algo_trainer_obj, algo_config = algo_select(config["kwargs"])

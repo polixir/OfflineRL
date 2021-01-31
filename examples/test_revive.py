@@ -1,9 +1,9 @@
 import fire
 
-from batchrl.algo import algo_select
-from batchrl.data import load_data_by_task
-from batchrl.data.revive import load_revive_buffer
-from batchrl.evaluation import get_defalut_callback
+from offlinerl.algo import algo_select
+from offlinerl.data import load_data_by_task
+from offlinerl.data.revive import load_revive_buffer
+from offlinerl.evaluation import get_defalut_callback
 
 
 def run_algo(**kwargs):

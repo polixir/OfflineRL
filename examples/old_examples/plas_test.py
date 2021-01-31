@@ -1,9 +1,9 @@
-from batchrl.algo.modelfree import plas
-from batchrl.config.algo import plas_config
+from offlinerl.algo.modelfree import plas
+from offlinerl.config.algo import plas_config
 
-from batchrl.utils.config import parse_config
-from batchrl.data.d4rl import load_d4rl_buffer
-from batchrl.evaluation.d4rl import d4rl_eval_fn
+from offlinerl.utils.config import parse_config
+from offlinerl.data.d4rl import load_d4rl_buffer
+from offlinerl.evaluation.d4rl import d4rl_eval_fn
 
 
 algo = plas

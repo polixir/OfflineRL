@@ -1,9 +1,9 @@
 import fire
 
-from batchrl.algo import algo_select
-from batchrl.data.d4rl import load_d4rl_buffer
-from batchrl.evaluation.d4rl import d4rl_eval_fn
-from batchrl.evaluation.fqe import fqe_eval_fn
+from offlinerl.algo import algo_select
+from offlinerl.data.d4rl import load_d4rl_buffer
+from offlinerl.evaluation.d4rl import d4rl_eval_fn
+from offlinerl.evaluation.fqe import fqe_eval_fn
 
 def run_algo(**kwargs):
     algo_init_fn, algo_trainer_obj, algo_config = algo_select(kwargs)
