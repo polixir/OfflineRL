@@ -106,9 +106,9 @@ def fqe_eval_fn():
         batch = buffer[:eval_size]
         data = to_torch(batch, torch.float32, device=device)
         o0 = data.obs
-        a0 = policy.get_action(o0)
-        init_sa = torch.cat((o0, a0), -1).to(device)
         with torch.no_grad():
+            a0 = policy.get_action(o0)
+            init_sa = torch.cat((o0, a0), -1).to(device)
             estimate_q0 = critic(init_sa)
         res = OrderedDict()
         res["Estimate_q0"] = estimate_q0.mean().item()
