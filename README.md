@@ -1,5 +1,5 @@
-# offlinerl 
-offlinerl is a repository for Batch RL(batch reinforce learning or offline reinforce learning).
+# OfflineRL 
+OfflineRL is a repository for Offline RL(batch reinforce learning or offline reinforce learning).
 
 ## Install bactchrl
 
