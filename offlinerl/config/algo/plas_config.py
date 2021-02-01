@@ -10,7 +10,7 @@ obs_shape = None
 act_shape = None
 max_action = None
 
-vae_iterations = 500#000
+vae_iterations = 500000
 vae_hidden_size = 750
 vae_batch_size = 100
 vae_kl_weight = 0.5
