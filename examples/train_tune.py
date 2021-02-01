@@ -1,4 +1,5 @@
 import fire
+import random
 from ray import tune
 
 from offlinerl.algo import algo_select
@@ -23,6 +24,7 @@ def training_function(config):
 def run_algo(**kwargs):
     config = {}
     config["kwargs"] = kwargs
+    config["kwargs"]['seed'] = random.randint(0, 1000000)
     _, _, algo_config = algo_select(kwargs)
     # Prepare Dataset
     load_data_from_newrl(algo_config["task"], algo_config["task_data_type"], algo_config["task_train_num"])

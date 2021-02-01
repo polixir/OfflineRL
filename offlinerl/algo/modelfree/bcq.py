@@ -14,6 +14,7 @@ from tianshou.data import Batch
 from offlinerl.algo.base import BaseAlgo
 from offlinerl.utils.data import to_torch, sample
 from offlinerl.utils.net.common import MLP
+from offlinerl.utils.exp import setup_seed
 
 class VAE(torch.nn.Module):
     def __init__(self, state_dim, action_dim, vae_features, vae_layers, max_action=1.0):
@@ -91,6 +92,8 @@ class BCQPolicy(torch.nn.Module):
 
 def algo_init(args):
     logger.info('Run algo_init function')
+
+    setup_seed(args['seed'])
     
     if args["obs_shape"] and args["action_shape"]:
         obs_shape, action_shape = args["obs_shape"], args["action_shape"]
