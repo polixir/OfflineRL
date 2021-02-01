@@ -45,8 +45,9 @@ class FQE:
         min_reward = self.buffer.rew.min()
         max_reward = self.buffer.rew.max()
 
-        max_value = (1.2 * max_reward + 0.8 * min_reward) / (1 - discount)
-        min_value = (1.2 * min_reward + 0.8 * max_reward) / (1 - discount)
+        # enlarge the interval by 40%
+        max_value = (1.2 * max_reward - 0.2 * min_reward) / (1 - discount)
+        min_value = (1.2 * min_reward - 0.2 * max_reward) / (1 - discount)
 
         data = self.buffer.sample(batch_size)
         input_dim = data.obs.shape[-1] + data.act.shape[-1]
@@ -58,8 +59,8 @@ class FQE:
 
         print('Training Fqe...')
         for t in range(num_steps):
-            batch = self.buffer.sample(batch_size)
-            data = to_torch(batch, torch.float32, device=self._device)
+            data = self.buffer.sample(batch_size)
+            data = to_torch(data, torch.float32, device=self._device)
             r = data.rew
             terminals = data.done
             o1 = data.obs
@@ -88,7 +89,7 @@ class FQE:
 
 def fqe_eval_fn():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    def fqe_eval(policy, buffer):
+    def fqe_eval(policy, buffer, start_index):
         policy = deepcopy(policy)
         policy = policy.to(device)
 
@@ -102,14 +103,17 @@ def fqe_eval_fn():
                                      critic_lr=1e-4,
                                      num_steps=250000)
 
-        eval_size = 10000
-        batch = buffer[:eval_size]
-        data = to_torch(batch, torch.float32, device=device)
-        o0 = data.obs
+        data = buffer[start_index]
+        obs = data.obs
+        obs = torch.tensor(obs).float()
+        estimate_q0 = []
         with torch.no_grad():
-            a0 = policy.get_action(o0)
-            init_sa = torch.cat((o0, a0), -1).to(device)
-            estimate_q0 = critic(init_sa)
+            for o in torch.split(obs, 256, dim=0):
+                o = o.to(device)
+                a = policy.get_action(o)
+                init_sa = torch.cat((o, a), -1).to(device)
+                estimate_q0.append(critic(init_sa).cpu())
+        estimate_q0 = torch.cat(estimate_q0, dim=0)
         res = OrderedDict()
         res["Estimate_q0"] = estimate_q0.mean().item()
         return res
