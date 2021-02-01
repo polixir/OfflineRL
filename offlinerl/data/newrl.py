@@ -5,9 +5,7 @@ from offlinerl.utils.data import SampleBatch, get_scaler
 from offlinerl.utils.data import BufferDataset, BufferDataloader
 
     
-def load_revive_buffer(data_dir):
-    data = np.load(data_dir)
-
+def load_newrl_buffer(data):
     buffer = SampleBatch(
         obs = data["obs"],
         obs_next = data["next_obs"],
@@ -24,12 +22,14 @@ def load_revive_buffer(data_dir):
     logger.info('Episode reward: {}', buffer.rew.sum() /np.sum(buffer.done) )
     logger.info('Number of terminals on: {}', np.sum(buffer.done))
     
-    #rew_scaler = get_scaler(buffer.rew)
-    #buffer.rew = rew_scaler.transform(buffer.rew)
-    #buffer.rew =  buffer.rew * 0.01
-    #buffer.done[buffer.rew < np.sort(buffer.rew.reshape(-1))[int(len(buffer)*0.01)]] = 1
+    """
+    rew_scaler = get_scaler(buffer.rew)
+    buffer.rew = rew_scaler.transform(buffer.rew)
+    buffer.rew =  buffer.rew * 0.01
+    buffer.done[buffer.rew < np.sort(buffer.rew.reshape(-1))[int(len(buffer)*0.01)]] = 1
     
-    #buffer = BufferDataset(buffer)
-    #buffer = BufferDataloader(buffer, batch_size=1, collate_fn=lambda x: x[0], num_workers=8) 
+    buffer = BufferDataset(buffer)
+    buffer = BufferDataloader(buffer, batch_size=1, collate_fn=lambda x: x[0], num_workers=8)
+    """
     
     return buffer

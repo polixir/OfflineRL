@@ -4,9 +4,9 @@ import warnings
 warnings.filterwarnings('ignore')
 
 
-from offlinerl.config.algo import cql_config, plas_config, mopo_config, moose_config, mlas_config, bcqd_config, bcq_config, bc_config, crr_config
+from offlinerl.config.algo import cql_config, plas_config, mopo_config, moose_config, bcqd_config, bcq_config, bc_config, crr_config
 from offlinerl.utils.config import parse_config
-from offlinerl.algo.modelfree import cql, plas, mlas, bcqd, bcq, bc, crr
+from offlinerl.algo.modelfree import cql, plas, bcqd, bcq, bc, crr
 from offlinerl.algo.modelbase import mopo, moose
 
 algo_dict = {
@@ -16,7 +16,6 @@ algo_dict = {
     "cql" : {"algo" : cql, "config" : cql_config},
     "crr" : {"algo" : crr, "config" : crr_config},
     "plas" : {"algo" : plas, "config" : plas_config},
-    "mlas" : {"algo" : mlas, "config" : mlas_config},
     'moose' : {"algo" : moose, "config" : moose_config},
     'mopo': {"algo" : mopo, "config": mopo_config},
 }

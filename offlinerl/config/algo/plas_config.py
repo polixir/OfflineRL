@@ -1,19 +1,19 @@
 import torch
 from offlinerl.utils.exp import select_free_cuda
 
-task = "Walker2d-v3"
-dataset_path = "/home/revive/syg/datasets/revive/walker/Walker2d-v3-low-999-train.npz"
+task = "Hopper-v3"
+task_data_type = "low"
+task_train_num = 99
+
 device = 'cuda'+":"+str(select_free_cuda()) if torch.cuda.is_available() else 'cpu'
 obs_shape = None
 act_shape = None
 max_action = None
 
-vae_iterations = 500000
+vae_iterations = 500#000
 vae_hidden_size = 750
 vae_batch_size = 100
 vae_kl_weight = 0.5
-#vae_pretrain_model = "/tmp/vae_499999.pkl"
-
 
 latent = True
 layer_num = 2

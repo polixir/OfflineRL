@@ -200,9 +200,7 @@ class AlgoTrainer(BaseAlgo):
                 self._sync_weight(self.jitter_target, self.jitter, soft_target_tau=self.args['soft_target_tau'])
                 self._sync_weight(self.target_q1, self.q1, soft_target_tau=self.args['soft_target_tau'])
                 self._sync_weight(self.target_q2, self.q2, soft_target_tau=self.args['soft_target_tau'])
-                
-            #res = callback_fn(self.get_policy())
-            
+
             res = callback_fn(self.get_policy())
             
             res['kl_loss'] = kl_loss.item()

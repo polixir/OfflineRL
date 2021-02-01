@@ -1,20 +1,16 @@
 import fire
 
 from offlinerl.algo import algo_select
-from offlinerl.data import load_data_by_task
-from offlinerl.data.revive import load_revive_buffer
-from offlinerl.evaluation import get_defalut_callback
+from offlinerl.data import load_data_from_newrl
+from offlinerl.evaluation import get_defalut_callback, OnlineCallBackFunction
 
 
 def run_algo(**kwargs):
     algo_init_fn, algo_trainer_obj, algo_config = algo_select(kwargs)
-
-    train_buffer, val_buffer = load_data_by_task(algo_config["task"])
-
+    train_buffer, val_buffer = load_data_from_newrl(algo_config["task"], algo_config["task_data_type"], algo_config["task_train_num"])
     algo_init = algo_init_fn(algo_config)
     algo_trainer = algo_trainer_obj(algo_init, algo_config)
-
-    callback = get_defalut_callback()
+    callback = OnlineCallBackFunction()
     callback.initialize(train_buffer=train_buffer, val_buffer=val_buffer, task=algo_config["task"])
 
     algo_trainer.train(train_buffer, val_buffer, callback_fn=callback)

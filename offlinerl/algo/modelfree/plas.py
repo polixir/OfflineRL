@@ -262,10 +262,7 @@ class AlgoTrainer(BaseAlgo):
                 if callback_fn is None:
                     self.eval_policy()
                 else:
-                    res = callback_fn(policy = self.get_policy(), 
-                                      train_buffer = train_buffer,
-                                      val_buffer = val_buffer,
-                                      args = self.args)
+                    res = callback_fn(policy = self.get_policy())
                     self.log_res((it + 1) // 1000, res)
     
     

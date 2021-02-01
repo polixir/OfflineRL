@@ -1,10 +1,10 @@
 import torch
 from offlinerl.utils.exp import select_free_cuda
 
-#task = "Walker2d-v3"
 task = "Hopper-v3"
-dataset_path = "/home/revive/syg/datasets/revive/hopper/Hopper-v3-low-999-train.npz"
-dataset_dir = "/home/revive/syg/datasets/revive//walker2d"
+task_data_type = "low"
+task_train_num = 99
+
 device = 'cuda'+":"+str(select_free_cuda()) if torch.cuda.is_available() else 'cpu'
 obs_shape = None
 act_shape = None

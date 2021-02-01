@@ -1,11 +1,9 @@
 import gym
 import newrl
 
+
 def get_env(task):
     try:
-        task_name = task.strip().split("-")[0]
-        env = newrl.make(task_name)
-    except:
         if task.startswith("HalfCheetah-v3"):
             env = newrl.make("HalfCheetah-v3")
         elif task.startswith("Hopper-v3"):
@@ -16,6 +14,9 @@ def get_env(task):
             import d4rl
             env = gym.make(task[5:])
         else:
+            task_name = task.strip().split("-")[0]
+            env = newrl.make(task_name)
+    except:
             raise NotImplementedError
 
     return env
@@ -35,14 +36,12 @@ def get_env_shape(task):
     
     return obs_dim, act_dim
 
-
 def get_env_action_range(task):
     env = get_env(task)
     act_max = float(env.action_space.high[0])
     act_min = float(env.action_space.low[0])
     
-    return act_max, act_min
-    
+    return act_max, act_min  
     
 def get_env_state_range(task):
     env = get_env(task)
