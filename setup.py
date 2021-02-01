@@ -5,13 +5,13 @@ from setuptools import setup
 
 def get_version() -> str:
     # https://packaging.python.org/guides/single-sourcing-package-version/
-    init = open(os.path.join("batchrl", "__init__.py"), "r").read().split()
+    init = open(os.path.join("offlinerl", "__init__.py"), "r").read().split()
     return init[init.index("__version__") + 2][1:-1]
 
 setup(
-    name='batchrl',
-    description="A Library for Batch RL(Offline RL)",
-    url="https://agit.ai/Yi/batchrl.git",
+    name='offlinerl',
+    description="A Library for Offline RL(Batch RL)",
+    url="https://agit.ai/Yi/offlinerl.git",
     version=get_version(),
     author="SongyiGao",
     author_email="songyigao@gmail.com",
