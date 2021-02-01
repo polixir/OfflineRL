@@ -1,6 +1,15 @@
 # OfflineRL 
 OfflineRL is a repository for Offline RL(batch reinforce learning or offline reinforce learning).
 
+## Install newrl
+
+```
+git clone https://agit.ai/Polixir/newrl.git
+cd newrl
+pip install -e .
+```
+For more details on use, please see [newrl](https://agit.ai/Polixir/newrl)。
+
 ## Install bactchrl
 
 ```
