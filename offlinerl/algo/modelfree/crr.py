@@ -12,9 +12,12 @@ from offlinerl.utils.data import to_torch, sample
 from offlinerl.utils.net.common import Net, MLP
 from offlinerl.utils.net.continuous import DistributionalCritic
 from offlinerl.utils.net.tanhpolicy import TanhGaussianPolicy
+from offlinerl.utils.exp import setup_seed
 
 def algo_init(args):
     logger.info('Run algo_init function')
+
+    setup_seed(args['seed'])
     
     if args["obs_shape"] and args["action_shape"]:
         obs_shape, action_shape = args["obs_shape"], args["action_shape"]

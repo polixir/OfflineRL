@@ -6,10 +6,10 @@ import d4rl
 import numpy as np
 from loguru import logger
 
-from offlinerl.utils.data import SampleBatch, get_scaler
+from offlinerl.utils.data import SampleBatch
 
 def load_d4rl_buffer(task):
-    env = gym.make(task)
+    env = gym.make(task[5:])
     dataset = d4rl.qlearning_dataset(env)
 
     buffer = SampleBatch(
