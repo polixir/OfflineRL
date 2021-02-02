@@ -28,6 +28,16 @@ python examples/train_task.py --algo_name=cql --exp_name=halfcheetah --task Half
 python examples/train_tune.py --algo_name=cql --exp_name=halfcheetah --task HalfCheetah-v3 --task_data_type low --task_train_num 99
 ```
 
+**Parameters:**
+
+- ​            **algo_name**  :  Algorithm name . There are now bc, cql, plas,  bcq and mopo algorithms available.
+- ​            **exp_name** :  Experiment name for easy visualization using aim.
+- ​            **task**  : Task name, See [newrl](https://agit.ai/Polixir/newrl/wiki/Tasks) for details.
+- ​            **task_data_type** : Data level. Each task collects data using a low, medium, and high level strategy in [newrl](https://agit.ai/Polixir/newrl).
+- ​            **task_train_num** :  Number of train data trajectories. For each task, newrl provides training data for up to 9999 trajectories.
+
+
+
 ## View experimental results
 
 ```shell
