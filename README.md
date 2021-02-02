@@ -1,8 +1,18 @@
 # OfflineRL 
 
-OfflineRL is a repository for Offline RL(batch reinforce learning or offline reinforce learning).
+OfflineRL is a repository for Offline RL (batch reinforcement learning or offline reinforcement learning).
 
-## Install newrl
+## Re-implemented Algorithms
+### Model-free methods
+- **CQL**: Kumar, Aviral, et al. “Conservative Q-Learning for Offline Reinforcement Learning.” Advances in Neural Information Processing Systems, vol. 33, 2020. [paper](https://arxiv.org/abs/2006.04779) [code](https://github.com/aviralkumar2907/CQL)
+- **PLAS**: Zhou, Wenxuan, et al. “PLAS: Latent Action Space for Offline Reinforcement Learning.” ArXiv Preprint ArXiv:2011.07213, 2020.
+ [website](https://sites.google.com/view/latent-policy) [paper](https://arxiv.org/abs/2011.07213) [code](https://github.com/Wenxuan-Zhou/PLAS)
+- **BCQ**: Fujimoto, Scott, et al. “Off-Policy Deep Reinforcement Learning without Exploration.” International Conference on Machine Learning, 2018, pp. 2052–2062. [paper](https://arxiv.org/abs/1812.02900) [code](https://github.com/sfujim/BCQ)
+### Model-based methods
+- **MOPO**: Yu, Tianhe, et al. “MOPO: Model-Based Offline Policy Optimization.” Advances in Neural Information Processing Systems, vol. 33, 2020. [paper](https://papers.nips.cc/paper/2020/hash/a322852ce0df73e204b7e67cbbef0d0a-Abstract.html) [code](https://github.com/tianheyu927/mopo)
+
+## Install Datasets
+### NewRL
 
 ```shell
 git clone https://agit.ai/Polixir/newrl.git
@@ -12,7 +22,7 @@ pip install -e .
 
 For more details on use, please see [newrl](https://agit.ai/Polixir/newrl).
 
-## Install D4RL (Optional)
+### D4RL (Optional)
 ```shell
 pip install git+https://github.com/rail-berkeley/d4rl@master#egg=d4rl
 ```
@@ -40,16 +50,16 @@ python examples/train_d4rl.py --algo_name=cql --exp_name=d4rl-halfcheetah-medium
 
 **Parameters:**
 
-- ​            **algo_name**  :  Algorithm name . There are now bc, cql, plas,  bcq and mopo algorithms available.
-- ​            **exp_name** :  Experiment name for easy visualization using aim.
-- ​            **task**  : Task name, See [newrl](https://agit.ai/Polixir/newrl/wiki/Tasks) for details.
-- ​            **task_data_type** : Data level. Each task collects data using a low, medium, and high level strategy in [newrl](https://agit.ai/Polixir/newrl).
-- ​            **task_train_num** :  Number of train data trajectories. For each task, newrl provides training data for up to 9999 trajectories.
+- ​**algo_name**:  Algorithm name . There are now bc, cql, plas,  bcq and mopo algorithms available.
+- ​**exp_name**:  Experiment name for easy visualization using aim.
+- ​**task**: Task name, See [newrl](https://agit.ai/Polixir/newrl/wiki/Tasks) for details.
+- ​**task_data_type**: Data level. Each task collects data using low, medium, and high level strategies in [newrl](https://agit.ai/Polixir/newrl).
+- ​**task_train_num**:  Number of training data trajectories. For each task, newrl provides training data for up to 9999 trajectories.
 
 
 
 ## View experimental results
-We use **Aim** store and visualize results. Aim is an experiment logger that is easy to manage thousands of experiments. For more details, see [aim](https://github.com/aimhubio/aim). 
+We use **Aim** to store and visualize results. Aim is an experiment logger that is easy to manage thousands of experiments. For more details, see [aim](https://github.com/aimhubio/aim). 
 
 To visualize results in this repository:
 ```shell
@@ -57,12 +67,3 @@ cd offlinerl_tmp
 aim up
 ```
 Then you can see the results on http://127.0.0.1:43800.
-
-## Supported Algorithms
-### Model-free methods
-- **CQL**: Kumar, Aviral, et al. “Conservative Q-Learning for Offline Reinforcement Learning.” Advances in Neural Information Processing Systems, vol. 33, 2020. [paper](https://arxiv.org/abs/2006.04779) [code](https://github.com/aviralkumar2907/CQL)
-- **PLAS**: Zhou, Wenxuan, et al. “PLAS: Latent Action Space for Offline Reinforcement Learning.” ArXiv Preprint ArXiv:2011.07213, 2020.
- [website](https://sites.google.com/view/latent-policy) [paper](https://arxiv.org/abs/2011.07213) [code](https://github.com/Wenxuan-Zhou/PLAS)
-- **BCQ**: Fujimoto, Scott, et al. “Off-Policy Deep Reinforcement Learning without Exploration.” International Conference on Machine Learning, 2018, pp. 2052–2062. [paper](https://arxiv.org/abs/1812.02900) [code](https://github.com/sfujim/BCQ)
-### Model-based methods
-- **MOPO**: Yu, Tianhe, et al. “MOPO: Model-Based Offline Policy Optimization.” Advances in Neural Information Processing Systems, vol. 33, 2020. [paper](https://papers.nips.cc/paper/2020/hash/a322852ce0df73e204b7e67cbbef0d0a-Abstract.html) [code](https://github.com/tianheyu927/mopo)
