@@ -10,9 +10,16 @@ cd newrl
 pip install -e .
 ```
 
-For more details on use, please see [newrl](https://agit.ai/Polixir/newrl)。
+For more details on use, please see [newrl](https://agit.ai/Polixir/newrl).
 
-## Install bactchrl
+## Install D4RL (Optional)
+```shell
+pip install git+https://github.com/rail-berkeley/d4rl@master#egg=d4rl
+```
+
+For more details on use, please see [d4rl](https://github.com/rail-berkeley/d4rl).
+
+## Install offlinerl
 
 ```shell
 pip install -e .
@@ -26,6 +33,9 @@ python examples/train_task.py --algo_name=cql --exp_name=halfcheetah --task Half
 
 # Parameter search in the default parameter space using the cql algorithm in the HalfCheetah-v3-L-9 task
 python examples/train_tune.py --algo_name=cql --exp_name=halfcheetah --task HalfCheetah-v3 --task_data_type low --task_train_num 99
+
+# Training in D4RL halfcheetah-medium task using default parameters of cql algorithm (D4RL need to be installed)
+python examples/train_d4rl.py --algo_name=cql --exp_name=d4rl-halfcheetah-medium-cql --task d4rl-halfcheetah-medium-v0
 ```
 
 **Parameters:**
@@ -39,12 +49,20 @@ python examples/train_tune.py --algo_name=cql --exp_name=halfcheetah --task Half
 
 
 ## View experimental results
+We use **Aim** store and visualize results. Aim is an experiment logger that is easy to manage thousands of experiments. For more details, see [aim](https://github.com/aimhubio/aim). 
 
+To visualize results in this repository:
 ```shell
 cd offlinerl_tmp
-
 aim up
 ```
+Then you can see the results on http://127.0.0.1:43800.
 
-For more details on use, see [aim](https://github.com/aimhubio/aim)。
-
+## Supported Algorithms
+### Model-free methods
+- **CQL**: Kumar, Aviral, et al. “Conservative Q-Learning for Offline Reinforcement Learning.” Advances in Neural Information Processing Systems, vol. 33, 2020. [paper](https://arxiv.org/abs/2006.04779) [code](https://github.com/aviralkumar2907/CQL)
+- **PLAS**: Zhou, Wenxuan, et al. “PLAS: Latent Action Space for Offline Reinforcement Learning.” ArXiv Preprint ArXiv:2011.07213, 2020.
+ [website](https://sites.google.com/view/latent-policy) [paper](https://arxiv.org/abs/2011.07213) [code](https://github.com/Wenxuan-Zhou/PLAS)
+- **BCQ**: Fujimoto, Scott, et al. “Off-Policy Deep Reinforcement Learning without Exploration.” International Conference on Machine Learning, 2018, pp. 2052–2062. [paper](https://arxiv.org/abs/1812.02900) [code](https://github.com/sfujim/BCQ)
+### Model-based methods
+- **MOPO**: Yu, Tianhe, et al. “MOPO: Model-Based Offline Policy Optimization.” Advances in Neural Information Processing Systems, vol. 33, 2020. [paper](https://papers.nips.cc/paper/2020/hash/a322852ce0df73e204b7e67cbbef0d0a-Abstract.html) [code](https://github.com/tianheyu927/mopo)
