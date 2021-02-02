@@ -23,6 +23,7 @@ pip install -e .
 ```python
 # Training in HalfCheetah-v3-L-9 task using default parameters of cql algorithm
 python examples/train_task.py --algo_name=cql --exp_name=halfcheetah --task HalfCheetah-v3 --task_data_type low --task_train_num 99
+
 # Parameter search in the default parameter space using the cql algorithm in the HalfCheetah-v3-L-9 task
 python examples/train_tune.py --algo_name=cql --exp_name=halfcheetah --task HalfCheetah-v3 --task_data_type low --task_train_num 99
 ```
