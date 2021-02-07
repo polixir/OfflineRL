@@ -5,7 +5,7 @@ from offlinerl.utils.data import SampleBatch, get_scaler
 from offlinerl.utils.data import BufferDataset, BufferDataloader
 
     
-def load_newrl_buffer(data):
+def load_neorl_buffer(data):
     buffer = SampleBatch(
         obs = data["obs"],
         obs_next = data["next_obs"],

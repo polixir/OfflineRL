@@ -9,7 +9,7 @@ from tianshou.data import to_numpy, to_torch
 
 from offlinerl.utils.env import get_env
 from offlinerl.utils.net.common import MLP
-from offlinerl.evaluation.newrl import test_on_real_env
+from offlinerl.evaluation.neorl import test_on_real_env
 from offlinerl.evaluation.fqe import FQE, fqe_eval_fn
 
 class CallBackFunction:

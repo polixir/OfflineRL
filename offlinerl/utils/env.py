@@ -1,21 +1,21 @@
 import gym
-import newrl
+import neorl
 
 
 def get_env(task):
     try:
         if task.startswith("HalfCheetah-v3"):
-            env = newrl.make("HalfCheetah-v3")
+            env = neorl.make("HalfCheetah-v3")
         elif task.startswith("Hopper-v3"):
-            env = newrl.make("Hopper-v3")
+            env = neorl.make("Hopper-v3")
         elif task.startswith("Walker2d-v3"):   
-            env = newrl.make("Walker2d-v3")
+            env = neorl.make("Walker2d-v3")
         elif task.startswith('d4rl'):
             import d4rl
             env = gym.make(task[5:])
         else:
             task_name = task.strip().split("-")[0]
-            env = newrl.make(task_name)
+            env = neorl.make(task_name)
     except:
             raise NotImplementedError
 

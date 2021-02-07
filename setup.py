@@ -11,7 +11,7 @@ def get_version() -> str:
 setup(
     name='offlinerl',
     description="A Library for Offline RL(Batch RL)",
-    url="https://agit.ai/Yi/offlinerl.git",
+    url="https://agit.ai/Polixir/OfflineRL",
     version=get_version(),
     author="SongyiGao",
     author_email="songyigao@gmail.com",
