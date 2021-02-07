@@ -12,15 +12,15 @@ OfflineRL is a repository for Offline RL (batch reinforcement learning or offlin
 - **MOPO**: Yu, Tianhe, et al. “MOPO: Model-Based Offline Policy Optimization.” Advances in Neural Information Processing Systems, vol. 33, 2020. [paper](https://papers.nips.cc/paper/2020/hash/a322852ce0df73e204b7e67cbbef0d0a-Abstract.html) [code](https://github.com/tianheyu927/mopo)
 
 ## Install Datasets
-### NewRL
+### neorl
 
 ```shell
-git clone https://agit.ai/Polixir/newrl.git
-cd newrl
+git clone https://agit.ai/Polixir/neorl.git
+cd neorl
 pip install -e .
 ```
 
-For more details on use, please see [newrl](https://agit.ai/Polixir/newrl).
+For more details on use, please see [neorl](https://agit.ai/Polixir/neorl).
 
 ### D4RL (Optional)
 ```shell
@@ -52,9 +52,9 @@ python examples/train_d4rl.py --algo_name=cql --exp_name=d4rl-halfcheetah-medium
 
 - ​**algo_name**:  Algorithm name . There are now bc, cql, plas,  bcq and mopo algorithms available.
 - ​**exp_name**:  Experiment name for easy visualization using aim.
-- ​**task**: Task name, See [newrl](https://agit.ai/Polixir/newrl/wiki/Tasks) for details.
-- ​**task_data_type**: Data level. Each task collects data using low, medium, and high level strategies in [newrl](https://agit.ai/Polixir/newrl).
-- ​**task_train_num**:  Number of training data trajectories. For each task, newrl provides training data for up to 9999 trajectories.
+- ​**task**: Task name, See [neorl](https://agit.ai/Polixir/neorl/wiki/Tasks) for details.
+- ​**task_data_type**: Data level. Each task collects data using low, medium, and high level strategies in [neorl](https://agit.ai/Polixir/neorl).
+- ​**task_train_num**:  Number of training data trajectories. For each task, neorl provides training data for up to 9999 trajectories.
 
 
 
