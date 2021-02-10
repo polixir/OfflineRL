@@ -10,21 +10,42 @@ from tianshou.data import to_numpy, to_torch
 from offlinerl.utils.env import get_env
 from offlinerl.utils.net.common import MLP
 from offlinerl.evaluation.neorl import test_on_real_env
-from offlinerl.evaluation.fqe import FQE, fqe_eval_fn
+from offlinerl.evaluation.fqe import FQE
 
 class CallBackFunction:
     def __init__(self, *args, **kwargs):
         self.args = args
         self.kwargs = kwargs
-        self.call_count = 0
         self.is_initialized = False
     
     def initialize(self, train_buffer, val_buffer, *args, **kwargs):
         self.is_initialized = True
 
-    def __call__(self, policy):
+    def __call__(self, policy) -> dict:
         assert self.is_initialized, "`initialize` should be called before calls."
+        raise NotImplementedError
+
+class PeriodicCallBack(CallBackFunction):
+    '''This is a wrapper for callbacks that are only needed to perform periodically.'''
+    def __init__(self, callback : CallBackFunction, period : int, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._callback = callback
+        self.period = period
+        self.call_count = 0
+
+    def __getattr__(self, name : str):
+        return getattr(self._callback, name)
+
+    def initialize(self, train_buffer, val_buffer, *args, **kwargs):
+        self._callback.initialize(train_buffer, val_buffer, *args, **kwargs)
+
+    def __call__(self, policy) -> dict:
+        assert self._callback.is_initialized, "`initialize` should be called before calls."
         self.call_count += 1
+        if self.call_count % self.period == 0:
+            return self._callback(policy)
+        else:
+            return {}
 
 class CallBackFunctionList(CallBackFunction):
     # TODO: run `initialize` and `__call__` in parallel
@@ -37,7 +58,7 @@ class CallBackFunctionList(CallBackFunction):
             callback.initialize(train_buffer, val_buffer, *args, **kwargs)
         self.is_initialized = True
 
-    def __call__(self, policy):
+    def __call__(self, policy) -> dict:
         eval_res = OrderedDict()
 
         for callback in self.callback_list:
@@ -51,7 +72,7 @@ class OnlineCallBackFunction(CallBackFunction):
         self.env = get_env(self.task)
         self.is_initialized = True
 
-    def __call__(self, policy):
+    def __call__(self, policy) -> dict:
         assert self.is_initialized, "`initialize` should be called before callback."
         policy = deepcopy(policy).cpu()
         eval_res = OrderedDict()
@@ -61,62 +82,75 @@ class OnlineCallBackFunction(CallBackFunction):
         return eval_res
 
 class FQECallBackFunction(CallBackFunction):
-    def initialize(self, train_buffer=None, val_buffer=None, *args, **kwargs):
+    def initialize(self, train_buffer=None, val_buffer=None, start_index=None, pretrain=False, *args, **kwargs):
         assert train_buffer is not None or val_buffer is not None, 'you need to provide at least one buffer to run FQE test'
         self.buffer = val_buffer or train_buffer
+        self.start_index = start_index
+        self.pretrain = pretrain
 
-        '''implement a base value function here'''
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        if self.pretrain:
+            '''implement a base value function here'''
+            device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-        # clone the behaviorial policy
-        data = self.buffer[0]
-        policy = MLP(data.obs.shape[-1], data.act.shape[-1], 1024, 2).to(device)
-        optim = torch.optim.Adam(policy.parameters(), lr=1e-3)
-        for i in tqdm(range(10000)):
-            data = self.buffer.sample(256)
-            data = to_torch(data, device=device)
-            _act = policy(data.obs)
-            loss = ((data.act - _act) ** 2).mean()
-            
-            optim.zero_grad()
-            loss.backward()
-            optim.step()
+            # clone the behaviorial policy
+            data = self.buffer[0]
+            policy = MLP(data.obs.shape[-1], data.act.shape[-1], 1024, 2).to(device)
+            optim = torch.optim.Adam(policy.parameters(), lr=1e-3)
+            for i in tqdm(range(10000)):
+                data = self.buffer.sample(256)
+                data = to_torch(data, device=device)
+                _act = policy(data.obs)
+                loss = ((data.act - _act) ** 2).mean()
+                
+                optim.zero_grad()
+                loss.backward()
+                optim.step()
 
-        policy.get_action = lambda x: policy(x)
-        fqe = FQE(policy, self.buffer, device=device)
-        self.init_critic = fqe.train_estimator(num_steps=100000)
+            policy.get_action = lambda x: policy(x)
+            fqe = FQE(policy, self.buffer, device=device)
+            self.init_critic = fqe.train_estimator(num_steps=100000)
+        else:
+            self.init_critic = None
 
         self.is_initialized = True
 
-    def __call__(self, policy):
+    def __call__(self, policy) -> dict:
         assert self.is_initialized, "`initialize` should be called before callback."
-        self.call_count += 1
-        if self.call_count % 25 == 0:
-            device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-            policy = deepcopy(policy)
-            policy = policy.to(device)
+        policy = deepcopy(policy)
+        policy = policy.to(device)
 
-            Fqe = FQE(policy, self.buffer,
-                    q_hidden_features=1024,
-                    q_hidden_layers=4,
-                    device=device)
+        Fqe = FQE(policy, self.buffer,
+                  q_hidden_features=1024,
+                  q_hidden_layers=4,
+                  device=device)
 
+        if self.pretrain:
             critic = Fqe.train_estimator(self.init_critic, num_steps=100000)
-
-            eval_size = 10000
-            batch = self.buffer[:eval_size]
-            data = to_torch(batch, torch.float32, device=device)
-            o0 = data.obs
-            a0 = policy.get_action(o0)
-            init_sa = torch.cat((o0, a0), -1).to(device)
-            with torch.no_grad():
-                estimate_q0 = critic(init_sa)
-            res = OrderedDict()
-            res["FQE"] = estimate_q0.mean().item()
-            return res
         else:
-            return {}
+            critic = Fqe.train_estimator(num_steps=250000)
+
+        if self.start_index is not None:
+            data = self.buffer[self.start_index]
+            obs = data.obs
+            obs = torch.tensor(obs).float()
+            batches = torch.split(obs, 256, dim=0)
+        else:
+            batches = [torch.tensor(self.buffer.sample(256).obs).float() for _ in range(100)]
+
+        estimate_q0 = []
+        with torch.no_grad():
+            for o in batches:
+                o = o.to(device)
+                a = policy.get_action(o)
+                init_sa = torch.cat((o, a), -1).to(device)
+                estimate_q0.append(critic(init_sa).cpu())
+        estimate_q0 = torch.cat(estimate_q0, dim=0)
+
+        res = OrderedDict()
+        res["FQE"] = estimate_q0.mean().item()
+        return res
 
 class MBOPECallBackFunction(CallBackFunction):
     def initialize(self, train_buffer=None, val_buffer=None, *args, **kwargs):
@@ -142,36 +176,32 @@ class MBOPECallBackFunction(CallBackFunction):
 
         self.is_initialized = True
 
-    def __call__(self, policy):
+    def __call__(self, policy) -> dict:
         assert self.is_initialized, "`initialize` should be called before callback."
-        self.call_count += 1
-        if self.call_count % 25 == 0:
-            device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-            eval_size = 10000
-            batch = self.buffer[:eval_size]
-            data = to_torch(batch, torch.float32, device=device)
+        eval_size = 10000
+        batch = self.buffer[:eval_size]
+        data = to_torch(batch, torch.float32, device=device)
 
-            with torch.no_grad():
-                gamma = 0.99
-                reward = 0
-                obs = data.obs
-                for t in range(20):
-                    action = policy.get_action(obs)
-                    next = self.trainsition(torch.cat([obs, action], dim=-1))
-                    r = next[..., 0]
-                    obs = next[..., 1:]
-                    reward += gamma ** t * r
+        with torch.no_grad():
+            gamma = 0.99
+            reward = 0
+            obs = data.obs
+            for t in range(20):
+                action = policy.get_action(obs)
+                next = self.trainsition(torch.cat([obs, action], dim=-1))
+                r = next[..., 0]
+                obs = next[..., 1:]
+                reward += gamma ** t * r
 
-            res = OrderedDict()
-            res["MB-OPE"] = reward.mean().item()
-            return res
-        else:
-            return {}
+        res = OrderedDict()
+        res["MB-OPE"] = reward.mean().item()
+        return res
 
 class AutoOPECallBackFunction(CallBackFunction):
     def initialize(self, train_buffer=None, val_buffer=None, *args, **kwargs):
-        assert train_buffer is not None or val_buffer is not None, 'you need to provide at least one buffer to run MBOPE test'
+        assert train_buffer is not None or val_buffer is not None, 'you need to provide at least one buffer to run AutoOPE test'
         self.buffer = val_buffer or train_buffer
 
         '''implement a model here'''
@@ -398,36 +428,32 @@ class AutoOPECallBackFunction(CallBackFunction):
 
         self.is_initialized = True
 
-    def __call__(self, policy):
+    def __call__(self, policy) -> dict:
         assert self.is_initialized, "`initialize` should be called before callback."
-        self.call_count += 1
-        if self.call_count % 25 == 0:
-            device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-            eval_size = 10000
-            batch = self.buffer[:eval_size]
-            batch = to_torch(batch, torch.float32, device=device)
-            obs = batch.obs
+        eval_size = 10000
+        batch = self.buffer[:eval_size]
+        batch = to_torch(batch, torch.float32, device=device)
+        obs = batch.obs
 
-            self.trainsition.eval()
-            with torch.no_grad():
-                ret = 0
-                for t in range(200):
-                    action = policy.get_action(obs)
-                    obs, r = self.trainsition.forward_r(obs, action)
-                    ret += (0.995 ** t) * r
+        self.trainsition.eval()
+        with torch.no_grad():
+            ret = 0
+            for t in range(200):
+                action = policy.get_action(obs)
+                obs, r = self.trainsition.forward_r(obs, action)
+                ret += (0.995 ** t) * r
 
-            res = OrderedDict()
-            res["Auto-OPE"] = (torch.nansum(ret) / (1 - torch.isnan(ret).float()).sum()).cpu().item()
-            return res
-        else:
-            return {}
+        res = OrderedDict()
+        res["Auto-OPE"] = (torch.nansum(ret) / (1 - torch.isnan(ret).float()).sum()).cpu().item()
+        return res
 
 
 def get_defalut_callback(*args, **kwargs):
     return CallBackFunctionList([
         OnlineCallBackFunction(*args, **kwargs),
-        FQECallBackFunction(*args, **kwargs),
-        MBOPECallBackFunction(*args, **kwargs),
-        AutoOPECallBackFunction(*args, **kwargs),
+        PeriodicCallBack(FQECallBackFunction(*args, **kwargs), period=25),
+        PeriodicCallBack(MBOPECallBackFunction(*args, **kwargs), period=25),
+        PeriodicCallBack(AutoOPECallBackFunction(*args, **kwargs), period=25),
     ])

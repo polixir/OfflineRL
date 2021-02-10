@@ -2,16 +2,7 @@
 # Hyperparameter Selection for Offline Reinforcement Learning
 from copy import deepcopy
 import torch
-from torch import nn
-from torch.utils.tensorboard import SummaryWriter
-import argparse
-from functools import partial
-import pickle
-import math
 from tqdm import tqdm
-import numpy as np
-from tqdm import tqdm
-from collections import OrderedDict
 from tianshou.data import to_numpy, to_torch
 
 from offlinerl.utils.net.common import MLP
@@ -25,7 +16,7 @@ class FQE:
                  buffer,
                  q_hidden_features=1024,
                  q_hidden_layers=4,
-                 device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                 device="cuda" if torch.cuda.is_available() else "cpu"
                  ):
         self.policy = policy
         self.buffer = buffer
@@ -40,7 +31,8 @@ class FQE:
                         critic_lr=1e-4,
                         num_steps=250000,
                         polyak=0.0,
-                        batch_size=256):
+                        batch_size=256,
+                        verbose=False):
 
         min_reward = self.buffer.rew.min()
         max_reward = self.buffer.rew.max()
@@ -56,8 +48,11 @@ class FQE:
         target_critic = deepcopy(critic).to(self._device)
         target_critic.requires_grad_(False)
 
+        if verbose:
+            counter = tqdm(total=num_steps)
+
         print('Training Fqe...')
-        for t in tqdm(range(num_steps)):
+        for t in range(num_steps):
             batch = self.buffer.sample(batch_size)
             data = to_torch(batch, torch.float32, device=self._device)
             r = data.rew
@@ -84,33 +79,8 @@ class FQE:
                     for p, p_targ in zip(critic.parameters(), target_critic.parameters()):
                         p_targ.data.mul_(polyak)
                         p_targ.data.add_((1 - polyak) * p.data)
+
+            if verbose:
+                counter.update(1)
+
         return critic
-
-def fqe_eval_fn():
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    def fqe_eval(policy, buffer):
-        policy = deepcopy(policy)
-        policy = policy.to(device)
-
-        Fqe = FQE(policy, buffer,
-                  q_hidden_features=1024,
-                  q_hidden_layers=4,
-                  device=device)
-
-        critic = Fqe.train_estimator(discount=0.99,
-                                     target_update_period=100,
-                                     critic_lr=1e-4,
-                                     num_steps=250000)
-
-        eval_size = 10000
-        batch = buffer[:eval_size]
-        data = to_torch(batch, torch.float32, device=device)
-        o0 = data.obs
-        a0 = policy.get_action(o0)
-        init_sa = torch.cat((o0, a0), -1).to(device)
-        with torch.no_grad():
-            estimate_q0 = critic(init_sa)
-        res = OrderedDict()
-        res["Estimate_q0"] = estimate_q0.mean().item()
-        return res
-    return fqe_eval
