@@ -25,7 +25,6 @@ setup(
         "gtimer",
         "numpy",
         "tianshou",
-        "mujoco-py==2.0.2.13",
     ],
     
 )
