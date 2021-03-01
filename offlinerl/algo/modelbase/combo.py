@@ -80,6 +80,9 @@ class EnsembleLinear(torch.nn.Module):
 
         torch.nn.init.trunc_normal_(self.weight, std=1/(2*in_features**0.5))
 
+        self.register_parameter('saved_weight', torch.nn.Parameter(self.weight.detach().clone()))
+        self.register_parameter('saved_bias', torch.nn.Parameter(self.bias.detach().clone()))
+
         self.select = list(range(0, self.ensemble_size))
 
     def forward(self, x):
@@ -98,6 +101,12 @@ class EnsembleLinear(torch.nn.Module):
     def set_select(self, indexes):
         assert len(indexes) <= self.ensemble_size and max(indexes) < self.ensemble_size
         self.select = indexes
+        self.weight.data[indexes] = self.saved_weight.data[indexes]
+        self.bias.data[indexes] = self.saved_bias.data[indexes]
+
+    def update_save(self, indexes):
+        self.saved_weight.data[indexes] = self.weight.data[indexes]
+        self.saved_bias.data[indexes] = self.bias.data[indexes]
 
 class EnsembleTransition(torch.nn.Module):
     def __init__(self, obs_dim, action_dim, hidden_features, hidden_layers, ensemble_size=7, mode='local', with_reward=True):
@@ -141,6 +150,11 @@ class EnsembleTransition(torch.nn.Module):
         for layer in self.backbones:
             layer.set_select(indexes)
         self.output_layer.set_select(indexes)
+
+    def update_save(self, indexes):
+        for layer in self.backbones:
+            layer.update_save(indexes)
+        self.output_layer.update_save(indexes)
 
 class COMBOBuffer:
     def __init__(self, buffer_size):
@@ -224,18 +238,19 @@ class AlgoTrainer(BaseAlgo):
             new_val_losses = self._eval_transition(self.transition, valdata)
             print(new_val_losses)
 
-            change = False
+            indexes = []
             for i, new_loss, old_loss in zip(range(len(val_losses)), new_val_losses, val_losses):
                 if new_loss < old_loss:
-                    change = True
+                    indexes.append(i)
                     val_losses[i] = new_loss
 
-            if change:
+            if len(indexes) > 0:
+                self.transition.update_save(indexes)
                 cnt = 0
             else:
                 cnt += 1
 
-            if cnt >= 5 or epoch >= 100:
+            if cnt >= 5:
                 break
 
             # self.transition_optim_secheduler.step()

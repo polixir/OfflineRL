@@ -12,7 +12,7 @@ obs_shape = None
 act_shape = None
 max_action = None
 
-hidden_layer_size = 256
+hidden_layer_size = 400
 hidden_layers = 2
 transition_layers = 4
 
@@ -24,9 +24,9 @@ real_data_ratio = 0.5
 transition_batch_size = 256
 policy_batch_size = 256
 data_collection_per_epoch = 50e3
-buffer_size = 1.2e6
+buffer_size = 250e3
 steps_per_epoch = 1000
-max_epoch = 3000
+max_epoch = 300
 
 learnable_alpha = False
 transition_lr = 1e-3
@@ -56,6 +56,7 @@ params_tune = {
 #tune
 grid_tune = {
     "horizon" : [1, 5],
-    "lam" : [0.5, 1, 2, 5],
-    "uncertainty_mode" : ['aleatoric', 'disagreement'],
+    "with_important_sampling" : [True, False],
+    "base_beta" : [0.5, 1, 5],
+    "real_data_ratio" : [0.5, 0.75],
 }
