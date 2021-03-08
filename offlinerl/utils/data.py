@@ -71,3 +71,27 @@ def get_scaler(data):
     scaler.fit(data)
     
     return scaler
+
+class ModelBuffer:
+    def __init__(self, buffer_size):
+        self.data = None
+        self.buffer_size = int(buffer_size)
+
+    def put(self, batch_data):
+        batch_data.to_torch(device='cpu')
+
+        if self.data is None:
+            self.data = batch_data
+        else:
+            self.data.cat_(batch_data)
+        
+        if len(self) > self.buffer_size:
+            self.data = self.data[len(self) - self.buffer_size : ]
+
+    def __len__(self):
+        if self.data is None: return 0
+        return self.data.shape[0]
+
+    def sample(self, batch_size):
+        indexes = np.random.randint(0, len(self), size=(batch_size))
+        return self.data[indexes]

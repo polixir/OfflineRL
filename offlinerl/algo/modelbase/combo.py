@@ -6,14 +6,16 @@ import torch
 import numpy as np
 from copy import deepcopy
 from loguru import logger
-from torch.functional import F
 
 from tianshou.data import Batch
 
 from offlinerl.algo.base import BaseAlgo
-from offlinerl.utils.net.common import MLP, Net, Swish
+from offlinerl.utils.net.common import MLP, Net
 from offlinerl.utils.net.tanhpolicy import TanhGaussianPolicy
 from offlinerl.utils.exp import setup_seed
+
+from offlinerl.utils.data import ModelBuffer
+from offlinerl.utils.net.model.ensemble import EnsembleTransition
 
 def algo_init(args):
     logger.info('Run algo_init function')
@@ -62,126 +64,6 @@ def algo_init(args):
         "critic" : {"net" : [q1, q2], "opt" : critic_optim},
         "log_beta" : {"net" : log_beta, "opt" : beta_optimizer},
     }
-
-def soft_clamp(x : torch.Tensor, _min=None, _max=None):
-    # clamp tensor values while mataining the gradient
-    if _max is not None:
-        x = _max - F.softplus(_max - x)
-    if _min is not None:
-        x = _min + F.softplus(x - _min)
-    return x
-
-class EnsembleLinear(torch.nn.Module):
-    def __init__(self, in_features, out_features, ensemble_size=7):
-        super().__init__()
-
-        self.ensemble_size = ensemble_size
-
-        self.register_parameter('weight', torch.nn.Parameter(torch.zeros(ensemble_size, in_features, out_features)))
-        self.register_parameter('bias', torch.nn.Parameter(torch.zeros(ensemble_size, 1, out_features)))
-
-        torch.nn.init.trunc_normal_(self.weight, std=1/(2*in_features**0.5))
-
-        self.register_parameter('saved_weight', torch.nn.Parameter(self.weight.detach().clone()))
-        self.register_parameter('saved_bias', torch.nn.Parameter(self.bias.detach().clone()))
-
-        self.select = list(range(0, self.ensemble_size))
-
-    def forward(self, x):
-        weight = self.weight[self.select]
-        bias = self.bias[self.select]
-
-        if len(x.shape) == 2:
-            x = torch.einsum('ij,bjk->bik', x, weight)
-        else:
-            x = torch.einsum('bij,bjk->bik', x, weight)
-
-        x = x + bias
-
-        return x
-
-    def set_select(self, indexes):
-        assert len(indexes) <= self.ensemble_size and max(indexes) < self.ensemble_size
-        self.select = indexes
-        self.weight.data[indexes] = self.saved_weight.data[indexes]
-        self.bias.data[indexes] = self.saved_bias.data[indexes]
-
-    def update_save(self, indexes):
-        self.saved_weight.data[indexes] = self.weight.data[indexes]
-        self.saved_bias.data[indexes] = self.bias.data[indexes]
-
-class EnsembleTransition(torch.nn.Module):
-    def __init__(self, obs_dim, action_dim, hidden_features, hidden_layers, ensemble_size=7, mode='local', with_reward=True):
-        super().__init__()
-        self.obs_dim = obs_dim
-        self.mode = mode
-        self.with_reward = with_reward
-        self.ensemble_size = ensemble_size
-
-        self.activation = Swish()
-
-        module_list = []
-        for i in range(hidden_layers):
-            if i == 0:
-                module_list.append(EnsembleLinear(obs_dim + action_dim, hidden_features, ensemble_size))
-            else:
-                module_list.append(EnsembleLinear(hidden_features, hidden_features, ensemble_size))
-        self.backbones = torch.nn.ModuleList(module_list)
-
-        self.output_layer = EnsembleLinear(hidden_features, 2 * (obs_dim + self.with_reward), ensemble_size)
-
-        self.register_parameter('max_logstd', torch.nn.Parameter(torch.ones(obs_dim + self.with_reward) * 1, requires_grad=True))
-        self.register_parameter('min_logstd', torch.nn.Parameter(torch.ones(obs_dim + self.with_reward) * -5, requires_grad=True))
-
-    def forward(self, obs_action):
-        output = obs_action
-        for layer in self.backbones:
-            output = self.activation(layer(output))
-        mu, logstd = torch.chunk(self.output_layer(output), 2, dim=-1)
-        logstd = soft_clamp(logstd, self.min_logstd, self.max_logstd)
-        if self.mode == 'local':
-            if self.with_reward:
-                obs, reward = torch.split(mu, [self.obs_dim, 1], dim=-1)
-                obs = obs + obs_action[..., :self.obs_dim]
-                mu = torch.cat([obs, reward], dim=-1)
-            else:
-                mu = mu + obs_action[..., :self.obs_dim]
-        return torch.distributions.Normal(mu, torch.exp(logstd))
-
-    def set_select(self, indexes):
-        for layer in self.backbones:
-            layer.set_select(indexes)
-        self.output_layer.set_select(indexes)
-
-    def update_save(self, indexes):
-        for layer in self.backbones:
-            layer.update_save(indexes)
-        self.output_layer.update_save(indexes)
-
-class COMBOBuffer:
-    def __init__(self, buffer_size):
-        self.data = None
-        self.buffer_size = int(buffer_size)
-
-    def put(self, batch_data):
-        batch_data.to_torch(device='cpu')
-
-        if self.data is None:
-            self.data = batch_data
-        else:
-            self.data.cat_(batch_data)
-        
-        if len(self) > self.buffer_size:
-            self.data = self.data[len(self) - self.buffer_size : ]
-
-    def __len__(self):
-        if self.data is None: return 0
-        return self.data.shape[0]
-
-    def sample(self, batch_size):
-        indexes = np.random.randint(0, len(self), size=(batch_size))
-        return self.data[indexes]
-
 
 class AlgoTrainer(BaseAlgo):
     def __init__(self, algo_init, args):
@@ -265,7 +147,7 @@ class AlgoTrainer(BaseAlgo):
         real_batch_size = int(self.args['policy_batch_size'] * self.args['real_data_ratio'])
         model_batch_size = self.args['policy_batch_size']  - real_batch_size
         
-        model_buffer = COMBOBuffer(self.args['buffer_size'])
+        model_buffer = ModelBuffer(self.args['buffer_size'])
 
         for epoch in range(self.args['max_epoch']):
             # collect data

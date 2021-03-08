@@ -9,6 +9,7 @@ OfflineRL is a repository for Offline RL (batch reinforcement learning or offlin
  [website](https://sites.google.com/view/latent-policy) [paper](https://arxiv.org/abs/2011.07213) [code](https://github.com/Wenxuan-Zhou/PLAS)
 - **BCQ**: Fujimoto, Scott, et al. “Off-Policy Deep Reinforcement Learning without Exploration.” International Conference on Machine Learning, 2018, pp. 2052–2062. [paper](https://arxiv.org/abs/1812.02900) [code](https://github.com/sfujim/BCQ)
 ### Model-based methods
+- **COMBO**: Yu, Tianhe, et al. "COMBO: Conservative Offline Model-Based Policy Optimization." arXiv preprint arXiv:2102.08363 (2021). [paper](https://arxiv.org/abs/2102.08363)
 - **MOPO**: Yu, Tianhe, et al. “MOPO: Model-Based Offline Policy Optimization.” Advances in Neural Information Processing Systems, vol. 33, 2020. [paper](https://papers.nips.cc/paper/2020/hash/a322852ce0df73e204b7e67cbbef0d0a-Abstract.html) [code](https://github.com/tianheyu927/mopo)
 
 ## Install Datasets
