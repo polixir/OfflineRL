@@ -1,6 +1,6 @@
-# MOPO: Model-based Offline Policy Optimization
-# https://arxiv.org/abs/2005.13239
-# https://github.com/tianheyu927/mopo
+# COMBO: Conservative Offline Model-Based Policy Optimization
+# http://arxiv.org/abs/2102.08363
+# No available code
 
 import torch
 import numpy as np
@@ -30,6 +30,8 @@ def algo_init(args):
         args["obs_shape"], args["action_shape"] = obs_shape, action_shape
     else:
         raise NotImplementedError
+
+    args['target_entropy'] = - float(np.prod(action_shape))
     
     transition = EnsembleTransition(obs_shape, action_shape, args['hidden_layer_size'], args['transition_layers'], args['transition_init_num']).to(args['device'])
     transition_optim = torch.optim.Adam(transition.parameters(), lr=args['transition_lr'], weight_decay=0.000075)
@@ -46,19 +48,22 @@ def algo_init(args):
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args['actor_lr'])
 
     log_alpha = torch.zeros(1, requires_grad=True, device=args['device'])
-    alpha_optimizer = torch.optim.Adam([log_alpha], lr=args["actor_lr"])
+    alpha_optimizer = torch.optim.Adam([log_alpha], lr=args["critic_lr"])
 
     q1 = MLP(obs_shape + action_shape, 1, args['hidden_layer_size'], args['hidden_layers'], norm=None, hidden_activation='swish').to(args['device'])
     q2 = MLP(obs_shape + action_shape, 1, args['hidden_layer_size'], args['hidden_layers'], norm=None, hidden_activation='swish').to(args['device'])
-    critic_optim = torch.optim.Adam([*q1.parameters(), *q2.parameters()], lr=args['actor_lr'])
+    critic_optim = torch.optim.Adam([*q1.parameters(), *q2.parameters()], lr=args['critic_lr'])
+
+    log_beta = torch.zeros(1, requires_grad=True, device=args['device'])
+    beta_optimizer = torch.optim.Adam([log_beta], lr=args["critic_lr"])
 
     return {
         "transition" : {"net" : transition, "opt" : transition_optim},
         "actor" : {"net" : actor, "opt" : actor_optim},
         "log_alpha" : {"net" : log_alpha, "opt" : alpha_optimizer},
         "critic" : {"net" : [q1, q2], "opt" : critic_optim},
+        "log_beta" : {"net" : log_beta, "opt" : beta_optimizer},
     }
-
 
 class AlgoTrainer(BaseAlgo):
     def __init__(self, algo_init, args):
@@ -80,6 +85,9 @@ class AlgoTrainer(BaseAlgo):
         self.target_q1 = deepcopy(self.q1)
         self.target_q2 = deepcopy(self.q2)
         self.critic_optim = algo_init['critic']['opt']
+
+        self.log_beta = algo_init['log_beta']['net']
+        self.log_beta_optim = algo_init['log_beta']['opt']
 
         self.device = args['device']
         
@@ -159,22 +167,19 @@ class AlgoTrainer(BaseAlgo):
                     diff = next_obses_mode - next_obs_mean
                     disagreement_uncertainty = torch.max(torch.norm(diff, dim=-1, keepdim=True), dim=0)[0]
                     aleatoric_uncertainty = torch.max(torch.norm(next_obs_dists.stddev, dim=-1, keepdim=True), dim=0)[0]
-                    uncertainty = disagreement_uncertainty if self.args['uncertainty_mode'] == 'disagreement' else aleatoric_uncertainty
 
                     model_indexes = np.random.randint(0, next_obses.shape[0], size=(obs.shape[0]))
                     next_obs = next_obses[model_indexes, np.arange(obs.shape[0])]
                     reward = rewards[model_indexes, np.arange(obs.shape[0])]
                     
                     print('average reward:', reward.mean().item())
-                    print('average uncertainty:', uncertainty.mean().item())
 
-                    penalized_reward = reward - self.args['lam'] * uncertainty
                     dones = torch.zeros_like(reward)
 
                     batch_data = Batch({
                         "obs" : obs.cpu(),
                         "act" : action.cpu(),
-                        "rew" : penalized_reward.cpu(),
+                        "rew" : reward.cpu(),
                         "done" : dones.cpu(),
                         "obs_next" : next_obs.cpu(),
                     })
@@ -190,26 +195,29 @@ class AlgoTrainer(BaseAlgo):
                 batch.cat_(model_batch)
                 batch.to_torch(device=self.device)
 
-                self._sac_update(batch)
+                self._cql_update(batch)
 
             res = callback_fn(self.get_policy())
             
-            res['uncertainty'] = uncertainty.mean().item()
             res['disagreement_uncertainty'] = disagreement_uncertainty.mean().item()
             res['aleatoric_uncertainty'] = aleatoric_uncertainty.mean().item()
+            res['beta'] = torch.exp(self.log_beta.detach()).item()
             res['reward'] = reward.mean().item()
             self.log_res(epoch, res)
 
         return self.get_policy()
 
-    def _sac_update(self, batch_data):
+    def _cql_update(self, batch_data):
         obs = batch_data['obs']
         action = batch_data['act']
         next_obs = batch_data['obs_next']
         reward = batch_data['rew']
         done = batch_data['done']
+        batch_size = done.shape[0]
 
-        # update critic
+        '''update critic'''
+
+        # normal bellman backup loss
         obs_action = torch.cat([obs, action], dim=-1)
         _q1 = self.q1(obs_action)
         _q2 = self.q2(obs_action)
@@ -226,6 +234,54 @@ class AlgoTrainer(BaseAlgo):
 
         critic_loss = ((y - _q1) ** 2).mean() + ((y - _q2) ** 2).mean()
 
+        # attach the value penalty term
+        random_actions = torch.rand(self.args['num_samples'], batch_size, action.shape[-1]).to(action) * 2 - 1
+        action_dist = self.actor(obs)
+        sampled_actions = torch.stack([action_dist.rsample() for _ in range(self.args['num_samples'])], dim=0)
+
+        random_next_actions = torch.rand(self.args['num_samples'], batch_size, action.shape[-1]).to(action) * 2 - 1
+        next_action_dist = self.actor(next_obs)
+        sampled_next_actions = torch.stack([next_action_dist.rsample() for _ in range(self.args['num_samples'])], dim=0)
+
+        sampled_actions = torch.cat([random_actions, sampled_actions], dim=0)
+        repeated_obs = torch.repeat_interleave(obs.unsqueeze(0), sampled_actions.shape[0], 0)
+        sampled_q1 = self.q1(torch.cat([repeated_obs, sampled_actions], dim=-1))
+        sampled_q2 = self.q2(torch.cat([repeated_obs, sampled_actions], dim=-1))
+
+        sampled_next_actions = torch.cat([random_next_actions, sampled_next_actions], dim=0)
+        repeated_next_obs = torch.repeat_interleave(next_obs.unsqueeze(0), sampled_next_actions.shape[0], 0)
+        sampled_next_q1 = self.q1(torch.cat([repeated_next_obs, sampled_next_actions], dim=-1))
+        sampled_next_q2 = self.q2(torch.cat([repeated_next_obs, sampled_next_actions], dim=-1))
+
+        sampled_q1 = torch.cat([sampled_q1, sampled_next_q1], dim=0)
+        sampled_q2 = torch.cat([sampled_q2, sampled_next_q2], dim=0)        
+
+        if self.args['with_important_sampling']:
+            # perform important sampling
+            _random_log_prob = torch.ones(self.args['num_samples'], batch_size, 1).to(sampled_q1) * action.shape[-1] * np.log(0.5)
+            _log_prob = action_dist.log_prob(sampled_actions[self.args['num_samples']:]).sum(dim=-1, keepdim=True)
+            _next_log_prob = next_action_dist.log_prob(sampled_next_actions[self.args['num_samples']:]).sum(dim=-1, keepdim=True)
+            is_weight = torch.cat([_random_log_prob, _log_prob, _random_log_prob, _next_log_prob], dim=0)
+            sampled_q1 = sampled_q1 - is_weight
+            sampled_q2 = sampled_q2 - is_weight
+
+        q1_penalty = (torch.logsumexp(sampled_q1, dim=0) - _q1) * self.args['base_beta']
+        q2_penalty = (torch.logsumexp(sampled_q2, dim=0) - _q2) * self.args['base_beta']
+
+        if self.args['learnable_beta']:
+            # update beta
+            beta_loss = - torch.mean(torch.exp(self.log_beta) * (q1_penalty - self.args['lagrange_thresh']).detach()) - \
+                torch.mean(torch.exp(self.log_beta) * (q2_penalty - self.args['lagrange_thresh']).detach())
+
+            self.log_beta_optim.zero_grad()
+            beta_loss.backward()
+            self.log_beta_optim.step()
+
+        q1_penalty = q1_penalty * torch.exp(self.log_beta)
+        q2_penalty = q2_penalty * torch.exp(self.log_beta)
+
+        critic_loss = critic_loss + torch.mean(q1_penalty) + torch.mean(q2_penalty)
+
         self.critic_optim.zero_grad()
         critic_loss.backward()
         self.critic_optim.step()
@@ -234,6 +290,8 @@ class AlgoTrainer(BaseAlgo):
         self._sync_weight(self.target_q1, self.q1, soft_target_tau=self.args['soft_target_tau'])
         self._sync_weight(self.target_q2, self.q2, soft_target_tau=self.args['soft_target_tau'])
 
+
+        '''update actor'''
         if self.args['learnable_alpha']:
             # update alpha
             alpha_loss = - torch.mean(self.log_alpha * (log_prob + self.args['target_entropy']).detach())
@@ -242,7 +300,7 @@ class AlgoTrainer(BaseAlgo):
             alpha_loss.backward()
             self.log_alpha_optim.step()
 
-        # update actor
+        # norm actor loss
         action_dist = self.actor(obs)
         new_action = action_dist.rsample()
         action_log_prob = action_dist.log_prob(new_action)

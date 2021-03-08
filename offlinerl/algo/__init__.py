@@ -4,15 +4,16 @@ import warnings
 warnings.filterwarnings('ignore')
 
 
-from offlinerl.config.algo import cql_config, plas_config, mopo_config, moose_config, bcqd_config, bcq_config, bc_config, crr_config
+from offlinerl.config.algo import cql_config, plas_config, mopo_config, moose_config, bcqd_config, bcq_config, bc_config, crr_config, combo_config
 from offlinerl.utils.config import parse_config
 from offlinerl.algo.modelfree import cql, plas, bcqd, bcq, bc, crr
-from offlinerl.algo.modelbase import mopo, moose
+from offlinerl.algo.modelbase import mopo, moose, combo
 
 algo_dict = {
     'bc' : {"algo" : bc, "config" : bc_config},
     'bcq' : {"algo" : bcq, "config" : bcq_config},
     'bcqd' : {"algo" : bcqd, "config" : bcqd_config},
+    'combo' : {"algo" : combo, "config" : combo_config},
     "cql" : {"algo" : cql, "config" : cql_config},
     "crr" : {"algo" : crr, "config" : crr_config},
     "plas" : {"algo" : plas, "config" : plas_config},
