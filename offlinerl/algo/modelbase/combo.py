@@ -28,6 +28,8 @@ def algo_init(args):
         args["obs_shape"], args["action_shape"] = obs_shape, action_shape
     else:
         raise NotImplementedError
+
+    args['target_entropy'] = - float(np.prod(action_shape))
     
     transition = EnsembleTransition(obs_shape, action_shape, args['hidden_layer_size'], args['transition_layers'], args['transition_init_num']).to(args['device'])
     transition_optim = torch.optim.Adam(transition.parameters(), lr=args['transition_lr'], weight_decay=0.000075)
@@ -188,7 +190,7 @@ class AlgoTrainer(BaseAlgo):
 
         self.transition = algo_init['transition']['net']
         self.transition_optim = algo_init['transition']['opt']
-        # self.transition_optim_secheduler = torch.optim.lr_scheduler.ExponentialLR(self.transition_optim, gamma=0.95)
+        self.transition_optim_secheduler = torch.optim.lr_scheduler.ExponentialLR(self.transition_optim, gamma=0.99)
         self.selected_transitions = None
 
         self.actor = algo_init['actor']['net']
@@ -253,9 +255,8 @@ class AlgoTrainer(BaseAlgo):
             if cnt >= 5:
                 break
 
-            # self.transition_optim_secheduler.step()
+            self.transition_optim_secheduler.step()
         
-        val_losses = self._eval_transition(self.transition, valdata)
         indexes = self._select_best_indexes(val_losses, n=self.args['transition_select_num'])
         self.transition.set_select(indexes)
         return self.transition
