@@ -12,13 +12,13 @@ obs_shape = None
 act_shape = None
 max_action = None
 
-max_epoch = 1000
+max_epoch = 300
 steps_per_epoch = 1000
 policy_bc_steps = 40000
 
 batch_size = 256
 hidden_layer_size = 256
-layer_num = 5
+layer_num = 2
 actor_lr=1E-4
 critic_lr=3E-4
 reward_scale=1
@@ -39,7 +39,7 @@ lagrange_thresh=10.0
 
 # extra params
 num_random=10
-type_q_backup= "none"
+type_q_backup= "min"
 q_backup_lmbda = 0.75
 deterministic_backup=False
 
