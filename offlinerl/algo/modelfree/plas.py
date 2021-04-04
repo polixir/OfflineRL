@@ -217,7 +217,7 @@ class AlgoTrainer(BaseAlgo):
                     res = callback_fn(self.get_policy())
                     self.log_res((it + 1) // 1000, res)
                     
-    def _train_policy_latent(self, train_buffer, val_buffer, callback_fn):
+    def _train_policy_latent(self, train_buffer, callback_fn):
         for it in range(self.args["actor_iterations"]):
             batch = train_buffer.sample(self.args["actor_batch_size"])
             batch = to_torch(batch, torch.float, device=self.args["device"])
@@ -283,6 +283,6 @@ class AlgoTrainer(BaseAlgo):
         self._train_vae(train_buffer) 
         self.vae.eval()
         if self.args["latent"]:
-            self._train_policy_latent(train_buffer, val_buffer, callback_fn)
+            self._train_policy_latent(train_buffer, callback_fn)
         else:
-            self._train_policy(train_buffer, val_buffer, callback_fn)
+            self._train_policy(train_buffer, callback_fn)
