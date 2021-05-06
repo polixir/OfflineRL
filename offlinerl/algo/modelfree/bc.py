@@ -1,16 +1,9 @@
 import torch
-import numpy as np
 from copy import deepcopy
 from loguru import logger
-from torch.functional import F
-from torch.distributions import Normal, kl_divergence
-
-from tianshou.data import Batch
 
 from offlinerl.algo.base import BaseAlgo
-from offlinerl.utils.data import to_torch, sample
-from offlinerl.utils.net.common import Net
-from offlinerl.utils.net.tanhpolicy import TanhGaussianPolicy
+from offlinerl.utils.net.continuous import GaussianActor
 from offlinerl.utils.exp import setup_seed
 
 def algo_init(args):
@@ -28,15 +21,8 @@ def algo_init(args):
         args["obs_shape"], args["action_shape"] = obs_shape, action_shape
     else:
         raise NotImplementedError
-    
-    net_a = Net(layer_num=args['actor_layers'], 
-                state_shape=obs_shape, 
-                hidden_layer_size=args['actor_features'])
 
-    actor = TanhGaussianPolicy(preprocess_net=net_a,
-                               action_shape=action_shape,
-                               hidden_layer_size=args['actor_features'],
-                               conditioned_sigma=True).to(args['device'])
+    actor = GaussianActor(obs_shape, action_shape, args['actor_features'], args['actor_layers']).to(args['device'])
 
     actor_optim = torch.optim.Adam(actor.parameters(), lr=args['actor_lr'])
 
@@ -55,6 +41,9 @@ class AlgoTrainer(BaseAlgo):
 
         self.batch_size = self.args['batch_size']
         self.device = self.args['device']
+
+        self.best_actor = deepcopy(self.actor)
+        self.best_loss = float('inf')
         
     def train(self, train_buffer, val_buffer, callback_fn):
         for epoch in range(self.args['max_epoch']):
@@ -70,12 +59,28 @@ class AlgoTrainer(BaseAlgo):
                 self.actor_optim.zero_grad()
                 loss.backward()
                 self.actor_optim.step()
-            
+
+            with torch.no_grad():
+                val_loss = 0
+                for i in range(len(val_buffer) // self.batch_size + (len(val_buffer) % self.batch_size > 0)):
+                    batch_data = val_buffer[i*self.batch_size:(i+1)*self.batch_size]
+                    batch_data.to_torch(device=self.device)
+                    obs = batch_data['obs']
+                    action = batch_data['act']
+
+                    action_dist = self.actor(obs)
+                    val_loss += ((action_dist.mean - action) ** 2).mean().item()
+
+            if val_loss < self.best_loss:
+                self.best_loss = val_loss
+                self.best_actor.load_state_dict(self.actor.state_dict())
+
             res = callback_fn(self.get_policy())
+            res['loss'] = val_loss
             
             self.log_res(epoch, res)
 
         return self.get_policy()
     
     def get_policy(self):
-        return self.actor
+        return self.best_actor

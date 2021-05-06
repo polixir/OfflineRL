@@ -5,6 +5,7 @@ from offlinerl.utils.net.common import BasePolicy, MLP
 from typing import Any, Dict, Tuple, Union, Optional, Sequence
 
 from offlinerl.utils.data import to_torch, to_torch_as, to_numpy
+from offlinerl.utils.function import soft_clamp
 
 
 SIGMA_MIN = -20
@@ -74,6 +75,26 @@ class Critic(nn.Module):
         logits, h = self.preprocess(s)
         logits = self.last(logits)
         return logits
+
+class GaussianActor(nn.Module, BasePolicy):
+    def __init__(self, obs_dim, action_dim, hidden_size, hidden_layers):
+        super().__init__()
+        self.backbone = MLP(in_features=obs_dim, 
+                            out_features=2 * action_dim,
+                            hidden_features=hidden_size,
+                            hidden_layers=hidden_layers)
+
+        self.register_parameter('max_logstd', torch.nn.Parameter(torch.ones(action_dim) * 1, requires_grad=True))
+        self.register_parameter('min_logstd', torch.nn.Parameter(torch.ones(action_dim) * -10, requires_grad=True))
+
+
+    def policy_infer(self, obs):
+        return self(obs).mean
+
+    def forward(self, obs):
+        mu, log_std = torch.chunk(self.backbone(obs), 2, dim=-1)
+        log_std = soft_clamp(log_std, self.min_logstd, self.max_logstd)
+        return torch.distributions.Normal(mu, torch.exp(log_std))
 
 
 class ActorProb(nn.Module):
