@@ -43,7 +43,7 @@ def algo_init(args):
 
     critic = DistributionalCritic(obs_shape, action_shape, args['atoms'], 
                                   args['hidden_features'], args['hidden_layers'],
-                                  args['min_value'], args['max_value']).to(args['device'])
+                                  None, None).to(args['device'])
     critic_optim = torch.optim.Adam(critic.parameters(), lr=args['lr'])
 
     return {
@@ -76,6 +76,9 @@ class AlgoTrainer(BaseAlgo):
         self.device = self.args['device']
         
     def train(self, train_buffer, val_buffer, callback_fn):
+        rewards = train_buffer['rew']
+        self.critic.set_interval(rewards.min() / (1 - self.gamma), rewards.max() / (1 - self.gamma))
+        self.critic_target.set_interval(rewards.min() / (1 - self.gamma), rewards.max() / (1 - self.gamma))
         for epoch in range(self.args['max_epoch']):
             for i in range(self.args['steps_per_epoch']):
                 batch_data = train_buffer.sample(self.batch_size)

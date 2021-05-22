@@ -243,10 +243,19 @@ class DistributionalCritic(torch.nn.Module):
 
         self.net = MLP(obs_dim + action_dim, atoms, features, layers)
 
-        self.register_buffer('z', torch.linspace(min_value, max_value, atoms))
-        self.delta_z = (max_value - min_value) / (atoms - 1)
+        if self.min_value is not None and self.max_value is not None:
+            self.register_buffer('z', torch.linspace(min_value, max_value, atoms))
+            self.delta_z = (max_value - min_value) / (atoms - 1)
+
+    def set_interval(self, min_value, max_value):
+        self.min_value = min_value
+        self.max_value = max_value
+        param = next(self.net.parameters())
+        self.register_buffer('z', torch.linspace(min_value, max_value, self.atoms).to(param))
+        self.delta_z = (max_value - min_value) / (self.atoms - 1)
 
     def forward(self, obs, action, with_q=False):
+        assert self.min_value is not None and self.max_value is not None
         obs_action = torch.cat([obs, action], dim=-1)
         logits = self.net(obs_action)
         p = torch.softmax(logits, dim=-1)

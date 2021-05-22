@@ -13,22 +13,20 @@ act_shape = None
 max_action = None
 
 hidden_features = 256
-hidden_layers = 4
-atoms = 51
-min_value = -500
-max_value = 500
+hidden_layers = 2
+atoms = 21
 
 advantage_mode = 'mean'
 weight_mode = 'exp'
 advantage_samples = 4
-beta = 0.1
+beta = 1.0
 gamma = 0.99
 
 batch_size = 1024
 steps_per_epoch = 1000
-max_epoch = 250
+max_epoch = 200
 
-lr = 1e-3
+lr = 1e-4
 update_frequency = 100
 
 #tune
@@ -38,8 +36,6 @@ params_tune = {
 
 #tune
 grid_tune = {
-    "lr" : [1e-3, 1e-4],
-    "beta" : [0.1, 10.0],
     "advantage_mode" : ['mean', 'max'],
     "weight_mode" : ['exp', 'binary'],
 }
