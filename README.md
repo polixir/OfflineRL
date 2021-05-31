@@ -4,6 +4,7 @@ OfflineRL is a repository for Offline RL (batch reinforcement learning or offlin
 
 ## Re-implemented Algorithms
 ### Model-free methods
+- **CRR**: Wang, Ziyu, et al. “Critic Regularized Regression.” Advances in Neural Information Processing Systems, vol. 33, 2020, pp. 7768–7778. [paper](https://arxiv.org/abs/2006.15134)
 - **CQL**: Kumar, Aviral, et al. “Conservative Q-Learning for Offline Reinforcement Learning.” Advances in Neural Information Processing Systems, vol. 33, 2020. [paper](https://arxiv.org/abs/2006.04779) [code](https://github.com/aviralkumar2907/CQL)
 - **PLAS**: Zhou, Wenxuan, et al. “PLAS: Latent Action Space for Offline Reinforcement Learning.” ArXiv Preprint ArXiv:2011.07213, 2020.
  [website](https://sites.google.com/view/latent-policy) [paper](https://arxiv.org/abs/2011.07213) [code](https://github.com/Wenxuan-Zhou/PLAS)

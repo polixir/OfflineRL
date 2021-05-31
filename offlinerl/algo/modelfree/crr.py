@@ -1,15 +1,12 @@
+# Critic regularized regression
+# Paper: https://arxiv.org/abs/2006.15134
+
 import torch
-import numpy as np
 from copy import deepcopy
 from loguru import logger
-from torch.functional import F
-from torch.distributions import Normal, kl_divergence
-
-from tianshou.data import Batch
 
 from offlinerl.algo.base import BaseAlgo
-from offlinerl.utils.data import to_torch, sample
-from offlinerl.utils.net.common import Net, MLP
+from offlinerl.utils.net.common import Net
 from offlinerl.utils.net.continuous import DistributionalCritic
 from offlinerl.utils.net.tanhpolicy import TanhGaussianPolicy
 from offlinerl.utils.exp import setup_seed
