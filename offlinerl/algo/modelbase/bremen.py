@@ -252,7 +252,6 @@ class AlgoTrainer(BaseAlgo):
 
                         done_traj = int(torch.sum(dones))
                         if done_traj > 0:
-                            print(f'{done_traj} restart')
                             replace_obs = train_buffer.sample(done_traj)['obs']
                             replace_obs = torch.tensor(replace_obs, device=self.device)
                             next_obs[torch.where(dones > 0)[0]] = replace_obs
