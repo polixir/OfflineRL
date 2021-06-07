@@ -84,9 +84,12 @@ class AlgoTrainer(BaseAlgo):
         self.device = args['device']
         
     def train(self, train_buffer, val_buffer, callback_fn):
-        transition = self.train_transition(train_buffer)
-        transition.requires_grad_(False)   
-        policy = self.train_policy(train_buffer, val_buffer, transition, callback_fn)
+        if self.args['dynamics_path'] is not None:
+            self.transition = torch.load(self.args['dynamics_path'], map_location='cpu').to(self.device)
+        else:
+            self.train_transition(train_buffer)
+        self.transition.requires_grad_(False)   
+        policy = self.train_policy(train_buffer, val_buffer, self.transition, callback_fn)
     
     def get_policy(self):
         return self.actor

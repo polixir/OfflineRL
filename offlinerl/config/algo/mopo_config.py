@@ -12,6 +12,8 @@ obs_shape = None
 act_shape = None
 max_action = None
 
+dynamics_path = None
+
 hidden_layer_size = 256
 hidden_layers = 2
 transition_layers = 4
