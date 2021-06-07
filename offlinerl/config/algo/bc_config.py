@@ -28,7 +28,5 @@ params_tune = {
 
 #tune
 grid_tune = {
-    "actor_lr" : [1e-3, 1e-5],
-    "actor_features" : [64, 1024],
-    "actor_layers" : [1, 5],
+    "actor_lr" : [1e-3],
 }

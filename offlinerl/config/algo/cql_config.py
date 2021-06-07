@@ -60,5 +60,5 @@ grid_tune = {
     "min_q_version" : [2, 3],
     "min_q_weight" : [5, 10],
     "lagrange_thresh" : [-1, 2, 5, 10],
-    "type_q_backup" : ["min", "none"],
+    # "type_q_backup" : ["min", "none"],
 }
