@@ -67,10 +67,11 @@ class CallBackFunctionList(CallBackFunction):
         return eval_res
 
 class OnlineCallBackFunction(CallBackFunction):
-    def initialize(self, train_buffer, val_buffer, task, *args, **kwargs):
+    def initialize(self, train_buffer, val_buffer, task, number_of_runs=100, *args, **kwargs):
         self.task = task
         self.env = get_env(self.task)
         self.is_initialized = True
+        self.number_of_runs = number_of_runs
 
     def __call__(self, policy) -> dict:
         assert self.is_initialized, "`initialize` should be called before callback."
@@ -78,7 +79,7 @@ class OnlineCallBackFunction(CallBackFunction):
         eval_res = OrderedDict()
         if not ray.is_initialized():
             ray.init(ignore_reinit_error=True)
-        eval_res.update(test_on_real_env(policy, self.env))
+        eval_res.update(test_on_real_env(policy, self.env, number_of_runs=self.number_of_runs))
         return eval_res
 
 class FQECallBackFunction(CallBackFunction):
