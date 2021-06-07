@@ -25,6 +25,7 @@ setup(
         "gtimer",
         "numpy",
         "tianshou",
+        "ray==1.2",
     ],
     
 )
