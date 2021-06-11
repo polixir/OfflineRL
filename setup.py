@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import os
 from setuptools import setup
+from setuptools import find_packages
 
 def get_version() -> str:
     # https://packaging.python.org/guides/single-sourcing-package-version/
@@ -13,6 +14,7 @@ setup(
     description="A Library for Offline RL(Batch RL)",
     url="https://agit.ai/Polixir/OfflineRL",
     version=get_version(),
+    packages=find_packages(),
     author="SongyiGao",
     author_email="songyigao@gmail.com",
     python_requires=">=3.7",
@@ -25,7 +27,7 @@ setup(
         "gtimer",
         "numpy",
         "tianshou",
-        "ray==1.2",
+        "ray",
     ],
     
 )
