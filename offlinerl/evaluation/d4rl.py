@@ -5,7 +5,6 @@ import numpy as np
 from tqdm import tqdm
 from collections import OrderedDict
 from d4rl.infos import REF_MIN_SCORE, REF_MAX_SCORE
-from tianshou.data import to_numpy,to_torch
 
 from offlinerl.utils.env import get_env
 

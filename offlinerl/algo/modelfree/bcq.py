@@ -9,10 +9,7 @@ from loguru import logger
 from torch.functional import F
 from torch.distributions import Normal, kl_divergence
 
-from tianshou.data import Batch
-
 from offlinerl.algo.base import BaseAlgo
-from offlinerl.utils.data import to_torch, sample
 from offlinerl.utils.net.common import MLP
 from offlinerl.utils.exp import setup_seed
 

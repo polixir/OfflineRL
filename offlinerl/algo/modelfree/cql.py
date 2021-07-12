@@ -10,7 +10,6 @@ from torch import optim
 from loguru import logger
 
 from offlinerl.algo.base import BaseAlgo
-from offlinerl.utils.data import to_torch
 from offlinerl.utils.net.common import Net
 from offlinerl.utils.net.continuous import Critic
 from offlinerl.utils.net.tanhpolicy import TanhGaussianPolicy
@@ -171,7 +170,7 @@ class AlgoTrainer(BaseAlgo):
         
     def _train(self, batch):
         self._current_epoch += 1
-        batch = to_torch(batch, torch.float, device=self.args["device"])
+        batch = batch.to_torch(dtype=torch.float32, device=self.args["device"])
         rewards = batch.rew
         terminals = batch.done
         obs = batch.obs

@@ -1,12 +1,9 @@
-import abc
-
 import torch
 import numpy as np
 from torch import nn as nn
 from torch.nn import functional as F
 from torch.distributions import Distribution, Normal
 
-from offlinerl.utils.data import Batch
 from offlinerl.utils.net.common import BasePolicy
 from offlinerl.utils.net.continuous import ActorProb
 
@@ -14,7 +11,7 @@ from offlinerl.utils.net.continuous import ActorProb
 class TanhNormal(Distribution):
     """
     Represent distribution of X where
-        X ~ tanh(Z)
+        X = tanh(Z)
         Z ~ N(mean, std)
 
     Note: this is not very numerically stable.

@@ -3,7 +3,6 @@
 from copy import deepcopy
 import torch
 from tqdm import tqdm
-from tianshou.data import to_numpy, to_torch
 
 from offlinerl.utils.net.common import MLP
 from offlinerl.utils.net.continuous import DistributionalCritic
@@ -54,7 +53,7 @@ class FQE:
         print('Training Fqe...')
         for t in range(num_steps):
             batch = self.buffer.sample(batch_size)
-            data = to_torch(batch, torch.float32, device=self._device)
+            data = batch.to_torch(dtype=torch.float32, device=self._device)
             r = data.rew
             terminals = data.done
             o1 = data.obs

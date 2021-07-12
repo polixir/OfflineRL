@@ -4,7 +4,6 @@ from torch import nn
 from offlinerl.utils.net.common import BasePolicy, MLP
 from typing import Any, Dict, Tuple, Union, Optional, Sequence
 
-from offlinerl.utils.data import to_torch, to_torch_as, to_numpy
 from offlinerl.utils.function import soft_clamp
 
 
@@ -69,7 +68,7 @@ class Critic(nn.Module):
         """Mapping: (s, a) -> logits -> Q(s, a)."""
         s = s.flatten(1)
         if a is not None:
-            a = to_torch_as(a, s)
+            a = torch.tensor(a).to(s)
             a = a.flatten(1)
             s = torch.cat([s, a], dim=1)
         logits, h = self.preprocess(s)
@@ -183,7 +182,6 @@ class RecurrentActorProb(nn.Module):
         state: Optional[Dict[str, torch.Tensor]] = None,
         info: Dict[str, Any] = {},
     ) -> Tuple[Tuple[torch.Tensor, torch.Tensor], Dict[str, torch.Tensor]]:
-        """Almost the same as :class:`~tianshou.utils.net.common.Recurrent`."""
         # s [bsz, len, dim] (training) or [bsz, dim] (evaluation)
         # In short, the tensor's shape in training phase is longer than which
         # in evaluation phase.
@@ -244,7 +242,6 @@ class RecurrentCritic(nn.Module):
         a: Optional[Union[np.ndarray, torch.Tensor]] = None,
         info: Dict[str, Any] = {},
     ) -> torch.Tensor:
-        """Almost the same as :class:`~tianshou.utils.net.common.Recurrent`."""
         assert len(s.shape) == 3
         self.nn.flatten_parameters()
         s, (h, c) = self.nn(s)

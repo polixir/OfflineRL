@@ -1,17 +1,13 @@
 # Overcoming Model Bias for Robust Offline Deep Reinforcement Learning
 # https://arxiv.org/abs/2008.05533
-import abc
 import copy
-from collections import OrderedDict
 
 import torch
 import numpy as np
-from torch import nn
 from torch import optim
 from loguru import logger
 import torch.nn.functional as F
 
-from offlinerl.utils.data import to_torch
 from offlinerl.algo.base import BaseAlgo
 from offlinerl.utils.net.common import Net
 from offlinerl.utils.net.moose import VAE
@@ -161,7 +157,7 @@ class AlgoTrainer(BaseAlgo):
         for step in range(100000):
             for i in range(len(self.bcs)):
                 batch = buffer.sample(256)
-                batch = to_torch(batch, torch.float, device=self.args["device"])
+                batch = batch.to_torch(dtype=torch.float32, device=self.args["device"])
                 rew = batch.rew
                 obs = batch.obs
                 act = batch.act
@@ -191,7 +187,7 @@ class AlgoTrainer(BaseAlgo):
 
         
     def _train_vae_step(self, batch):
-        batch = to_torch(batch, torch.float, device=self.args["device"])
+        batch = batch.to_torch(dtype=torch.float32, device=self.args["device"])
         obs = batch.obs
         act = batch.act
         
@@ -228,7 +224,7 @@ class AlgoTrainer(BaseAlgo):
     def _train_policy(self, replay_buffer, eval_fn):
         for it in range(self.args["actor_iterations"]):
             batch = replay_buffer.sample(self.args["actor_batch_size"])
-            batch = to_torch(batch, torch.float, device=self.args["device"])
+            batch = batch.to_torch(dtype=torch.float32, device=self.args["device"])
             rew = batch.rew
             done = batch.done
             obs = batch.obs
@@ -317,7 +313,7 @@ class AlgoTrainer(BaseAlgo):
     def _train_policy_latent(self, replay_buffer, eval_fn):
         for it in range(self.args["actor_iterations"]):
             batch = replay_buffer.sample(self.args["actor_batch_size"])
-            batch = to_torch(batch, torch.float, device=self.args["device"])
+            batch = batch.to_torch(dtype=torch.float32, device=self.args["device"])
             rew = batch.rew
             done = batch.done
             obs = batch.obs

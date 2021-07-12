@@ -4,8 +4,7 @@ from torch import nn
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Tuple, Union, Callable, Optional, Sequence
 
-from offlinerl.utils.data import to_torch, to_numpy, to_array_as
-
+from offlinerl.utils.data import to_array_as
 
 def miniblock(
     inp: int,
@@ -26,7 +25,7 @@ class BasePolicy(ABC):
         pass
     
     def get_action(self, obs):
-        obs_tensor = to_torch(obs, device=next(self.parameters()).device, dtype=torch.float32)
+        obs_tensor = torch.tensor(obs, device=next(self.parameters()).device, dtype=torch.float32)
         act = to_array_as(self.policy_infer(obs_tensor), obs)
         
         return act

@@ -3,9 +3,7 @@ import torch
 
 from tqdm import tqdm
 from copy import deepcopy
-from abc import ABC, abstractmethod
 from collections import OrderedDict
-from tianshou.data import to_numpy, to_torch
 
 from offlinerl.utils.env import get_env
 from offlinerl.utils.net.common import MLP
@@ -99,7 +97,7 @@ class FQECallBackFunction(CallBackFunction):
             optim = torch.optim.Adam(policy.parameters(), lr=1e-3)
             for i in tqdm(range(10000)):
                 data = self.buffer.sample(256)
-                data = to_torch(data, device=device)
+                data = data.to_torch(device=device)
                 _act = policy(data.obs)
                 loss = ((data.act - _act) ** 2).mean()
                 
@@ -167,7 +165,7 @@ class MBOPECallBackFunction(CallBackFunction):
         optim = torch.optim.Adam(self.trainsition.parameters(), lr=1e-3)
         for i in tqdm(range(100000)):
             data = self.buffer.sample(256)
-            data = to_torch(data, device=device)
+            data = data.to_torch(device=device)
             next = self.trainsition(torch.cat([data.obs, data.act], dim=-1))
             loss = ((next - torch.cat([data.rew, data.obs_next], dim=-1)) ** 2).mean()
             
@@ -183,7 +181,7 @@ class MBOPECallBackFunction(CallBackFunction):
 
         eval_size = 10000
         batch = self.buffer[:eval_size]
-        data = to_torch(batch, torch.float32, device=device)
+        data = batch.to_torch(dtype=torch.float32, device=device)
 
         with torch.no_grad():
             gamma = 0.99
@@ -399,7 +397,7 @@ class AutoOPECallBackFunction(CallBackFunction):
         self.trainsition.train()
         for i in tqdm(range(100_0000)):
             data_train = train_buffer.sample(128)
-            data_train = to_torch(data_train, device=device)
+            data_train = data_train.to_torch(device=device)
 
             nll_Auto = -torch.mean(
                 self.trainsition.log_prob_r(data_train.obs,
@@ -414,7 +412,7 @@ class AutoOPECallBackFunction(CallBackFunction):
 
             if i % 1000 == 0:
                 data_val = val_buffer.sample(1024)
-                data_val = to_torch(data_val, device=device)
+                data_val = data_val.to_torch(device=device)
                 self.trainsition.eval()
                 nll_val_Auto = -torch.mean(
                     self.trainsition.log_prob_r(data_val.obs,
@@ -435,7 +433,7 @@ class AutoOPECallBackFunction(CallBackFunction):
 
         eval_size = 10000
         batch = self.buffer[:eval_size]
-        batch = to_torch(batch, torch.float32, device=device)
+        batch = batch.to_torch(dtype=torch.float32, device=device)
         obs = batch.obs
 
         self.trainsition.eval()

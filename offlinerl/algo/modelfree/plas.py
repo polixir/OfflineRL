@@ -1,9 +1,7 @@
 # PLAS: Latent Action Space for Offline Reinforcement Learning
 # https://sites.google.com/view/latent-policy
 # https://github.com/Wenxuan-Zhou/PLAS
-import abc
 import copy
-from collections import OrderedDict
 
 import torch
 import numpy as np
@@ -12,7 +10,6 @@ from torch import optim
 from loguru import logger
 import torch.nn.functional as F
 
-from offlinerl.utils.data import to_torch
 from offlinerl.algo.base import BaseAlgo
 from offlinerl.utils.net.common import Net
 from offlinerl.utils.net.vae import VAE,ActorPerturbation
@@ -130,7 +127,7 @@ class AlgoTrainer(BaseAlgo):
 
         
     def _train_vae_step(self, batch):
-        batch = to_torch(batch, torch.float, device=self.args["device"])
+        batch = batch.to_torch(torch.float32, device=self.args["device"])
         obs = batch.obs
         act = batch.act
         
@@ -167,7 +164,7 @@ class AlgoTrainer(BaseAlgo):
     def _train_policy(self, train_buffer, callback_fn):
         for it in range(self.args["actor_iterations"]):
             batch = train_buffer.sample(self.args["actor_batch_size"])
-            batch = to_torch(batch, torch.float, device=self.args["device"])
+            batch = batch.to_torch(dtype=torch.float32, device=self.args["device"])
             rew = batch.rew
             done = batch.done
             obs = batch.obs
@@ -220,7 +217,7 @@ class AlgoTrainer(BaseAlgo):
     def _train_policy_latent(self, train_buffer, callback_fn):
         for it in range(self.args["actor_iterations"]):
             batch = train_buffer.sample(self.args["actor_batch_size"])
-            batch = to_torch(batch, torch.float, device=self.args["device"])
+            batch = batch.to_torch(dtype=torch.float32, device=self.args["device"])
             rew = batch.rew
             done = batch.done
             obs = batch.obs

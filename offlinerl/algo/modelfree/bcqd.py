@@ -9,7 +9,6 @@ import torch.nn.functional as F
 from loguru import logger
 
 from offlinerl.algo.base import BaseAlgo
-from offlinerl.utils.data import to_torch
 from offlinerl.utils.net.bcq_net import Conv_Q, FC_Q
 from offlinerl.utils.exp import setup_seed
 
@@ -88,7 +87,7 @@ class AlgoTrainer(BaseAlgo):
             
             # Sample replay buffer
             batch = train_buffer.sample(self.args["batch_size"])
-            batch = to_torch(batch, torch.float, device=self.args["device"])
+            batch = batch.to_torch(dtype=torch.float32, device=self.args["device"])
             reward = batch.rew
             done = batch.done
             state = batch.obs

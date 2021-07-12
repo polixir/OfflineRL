@@ -4,7 +4,6 @@ from loguru import logger
 from offlinerl.utils.data import SampleBatch, get_scaler
 from offlinerl.utils.data import BufferDataset, BufferDataloader
 
-    
 def load_neorl_buffer(data):
     buffer = SampleBatch(
         obs = data["obs"],
@@ -12,7 +11,7 @@ def load_neorl_buffer(data):
         act = data["action"],
         rew = data["reward"],
         done = data["done"],
-        )
+    )
 
     logger.info('obs shape: {}', buffer.obs.shape)
     logger.info('obs_next shape: {}', buffer.obs_next.shape)

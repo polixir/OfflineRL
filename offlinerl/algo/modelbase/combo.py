@@ -7,9 +7,8 @@ import numpy as np
 from copy import deepcopy
 from loguru import logger
 
-from tianshou.data import Batch
-
 from offlinerl.algo.base import BaseAlgo
+from offlinerl.utils.data import Batch
 from offlinerl.utils.net.common import MLP, Net
 from offlinerl.utils.net.tanhpolicy import TanhGaussianPolicy
 from offlinerl.utils.exp import setup_seed
@@ -195,7 +194,7 @@ class AlgoTrainer(BaseAlgo):
             for _ in range(self.args['steps_per_epoch']):
                 batch = train_buffer.sample(real_batch_size)
                 model_batch = model_buffer.sample(model_batch_size)
-                batch.cat_(model_batch)
+                batch = Batch.cat([batch, model_batch], axis=0)
                 batch.to_torch(device=self.device)
 
                 self._cql_update(batch)

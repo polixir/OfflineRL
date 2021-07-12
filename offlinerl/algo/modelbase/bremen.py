@@ -8,10 +8,10 @@ import torch
 import numpy as np
 from copy import deepcopy
 from loguru import logger
-from tianshou.data import Batch
 from torch.distributions import kl_divergence
 
 from offlinerl.algo.base import BaseAlgo
+from offlinerl.utils.data import Batch
 from offlinerl.utils.net.common import MLP
 from offlinerl.utils.net.continuous import GaussianActor
 from offlinerl.utils.exp import setup_seed

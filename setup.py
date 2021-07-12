@@ -26,7 +26,6 @@ setup(
         "sklearn",
         "gtimer",
         "numpy",
-        "tianshou",
         "ray",
     ],
     
