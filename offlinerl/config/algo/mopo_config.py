@@ -13,6 +13,7 @@ act_shape = None
 max_action = None
 
 dynamics_path = None
+dynamics_save_path = None
 
 hidden_layer_size = 256
 hidden_layers = 2
@@ -26,7 +27,6 @@ real_data_ratio = 0.05
 transition_batch_size = 256
 policy_batch_size = 256
 data_collection_per_epoch = 50e3
-buffer_size = 1.2e6
 steps_per_epoch = 1000
 max_epoch = 200
 
@@ -35,7 +35,6 @@ uncertainty_mode = 'aleatoric'
 transition_lr = 1e-3
 actor_lr = 3e-4
 critic_lr = 3e-4
-target_entropy = -3
 discount = 0.99
 soft_target_tau = 5e-3
 

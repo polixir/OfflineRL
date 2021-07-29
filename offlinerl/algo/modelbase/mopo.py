@@ -31,7 +31,7 @@ def algo_init(args):
         raise NotImplementedError
     
     transition = EnsembleTransition(obs_shape, action_shape, args['hidden_layer_size'], args['transition_layers'], args['transition_init_num']).to(args['device'])
-    transition_optim = torch.optim.Adam(transition.parameters(), lr=args['transition_lr'], weight_decay=0.000075)
+    transition_optim = torch.optim.AdamW(transition.parameters(), lr=args['transition_lr'], weight_decay=0.000075)
 
     net_a = Net(layer_num=args['hidden_layers'], 
                 state_shape=obs_shape, 
@@ -66,7 +66,6 @@ class AlgoTrainer(BaseAlgo):
 
         self.transition = algo_init['transition']['net']
         self.transition_optim = algo_init['transition']['opt']
-        self.transition_optim_secheduler = torch.optim.lr_scheduler.ExponentialLR(self.transition_optim, gamma=0.99)
         self.selected_transitions = None
 
         self.actor = algo_init['actor']['net']
@@ -81,14 +80,18 @@ class AlgoTrainer(BaseAlgo):
         self.critic_optim = algo_init['critic']['opt']
 
         self.device = args['device']
+
+        self.args['buffer_size'] = int(self.args['data_collection_per_epoch']) * self.args['horizon'] * 5
+        self.args['target_entropy'] = - self.args['action_shape']
         
     def train(self, train_buffer, val_buffer, callback_fn):
         if self.args['dynamics_path'] is not None:
             self.transition = torch.load(self.args['dynamics_path'], map_location='cpu').to(self.device)
         else:
             self.train_transition(train_buffer)
+            if self.args['dynamics_save_path'] is not None: torch.save(self.transition, self.args['dynamics_save_path'])
         self.transition.requires_grad_(False)   
-        policy = self.train_policy(train_buffer, val_buffer, self.transition, callback_fn)
+        self.train_policy(train_buffer, val_buffer, self.transition, callback_fn)
     
     def get_policy(self):
         return self.actor
@@ -130,8 +133,6 @@ class AlgoTrainer(BaseAlgo):
 
             if cnt >= 5:
                 break
-
-            self.transition_optim_secheduler.step()
         
         indexes = self._select_best_indexes(val_losses, n=self.args['transition_select_num'])
         self.transition.set_select(indexes)
@@ -142,6 +143,11 @@ class AlgoTrainer(BaseAlgo):
         model_batch_size = self.args['policy_batch_size']  - real_batch_size
         
         model_buffer = ModelBuffer(self.args['buffer_size'])
+
+        obs_max = torch.as_tensor(train_buffer['obs'].max(axis=0)).to(self.device)
+        obs_min = torch.as_tensor(train_buffer['obs'].min(axis=0)).to(self.device)
+        rew_max = train_buffer['rew'].max()
+        rew_min = train_buffer['rew'].min()
 
         for epoch in range(self.args['max_epoch']):
             # collect data
@@ -166,6 +172,9 @@ class AlgoTrainer(BaseAlgo):
                     model_indexes = np.random.randint(0, next_obses.shape[0], size=(obs.shape[0]))
                     next_obs = next_obses[model_indexes, np.arange(obs.shape[0])]
                     reward = rewards[model_indexes, np.arange(obs.shape[0])]
+
+                    next_obs = torch.max(torch.min(next_obs, obs_max), obs_min)
+                    reward = torch.clamp(reward, rew_min, rew_max)
                     
                     print('average reward:', reward.mean().item())
                     print('average uncertainty:', uncertainty.mean().item())
