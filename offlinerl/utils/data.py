@@ -226,7 +226,7 @@ class ModelBuffer:
         if self.data is None:
             self.data = batch_data
         else:
-            Batch.cat([self.data, batch_data], axis=0)
+            self.data = Batch.cat([self.data, batch_data], axis=0)
         
         if len(self) > self.buffer_size:
             self.data = self.data[len(self) - self.buffer_size : ]
