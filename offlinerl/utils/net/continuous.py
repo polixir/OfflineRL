@@ -68,7 +68,9 @@ class Critic(nn.Module):
         """Mapping: (s, a) -> logits -> Q(s, a)."""
         s = s.flatten(1)
         if a is not None:
-            a = torch.tensor(a).to(s)
+            if isinstance(a, np.ndarray):
+                a = torch.as_tensor(a)
+            a = a.to(s)
             a = a.flatten(1)
             s = torch.cat([s, a], dim=1)
         logits, h = self.preprocess(s)

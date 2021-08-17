@@ -25,7 +25,7 @@ class BasePolicy(ABC):
         pass
     
     def get_action(self, obs):
-        obs_tensor = torch.tensor(obs, device=next(self.parameters()).device, dtype=torch.float32)
+        obs_tensor = torch.as_tensor(obs, device=next(self.parameters()).device, dtype=torch.float32)
         act = to_array_as(self.policy_infer(obs_tensor), obs)
         
         return act

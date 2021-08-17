@@ -11,7 +11,7 @@ def to_array_as(x, y):
     if isinstance(x, torch.Tensor) and isinstance(y, np.ndarray):
         return x.detach().cpu().numpy().astype(y.dtype)
     elif isinstance(x, np.ndarray) and isinstance(y, torch.Tensor):
-        return torch.tensor(x).to(y)
+        return torch.as_tensor(x).to(y)
     else:
         return x
     
@@ -58,7 +58,7 @@ class Batch:
 
     def __getattr__(self, key : str) -> Any:
         """Return self.key."""
-        return self.__dict__[key]
+        return getattr(self.__dict__, key)
 
     def __contains__(self, key : str) -> bool:
         """Return key in self."""
