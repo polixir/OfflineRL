@@ -31,11 +31,11 @@ soft_target_tau=5e-3
 explore=1.0
 temp=1.0
 min_q_version=3
-min_q_weight=1.0
+min_q_weight=5.0
 
 # lagrange
 with_lagrange=False
-lagrange_thresh=10.0
+lagrange_thresh=2.0
 
 # extra params
 num_random=10
