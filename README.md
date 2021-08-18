@@ -42,10 +42,10 @@ pip install -e .
 
 ```python
 # Training in HalfCheetah-v3-L-9 task using default parameters of cql algorithm
-python examples/train_task.py --algo_name=cql --exp_name=halfcheetah --task HalfCheetah-v3 --task_data_type low --task_train_num 99
+python examples/train_task.py --algo_name=cql --exp_name=halfcheetah --task HalfCheetah-v3 --task_data_type low --task_train_num 100
 
 # Parameter search in the default parameter space using the cql algorithm in the HalfCheetah-v3-L-9 task
-python examples/train_tune.py --algo_name=cql --exp_name=halfcheetah --task HalfCheetah-v3 --task_data_type low --task_train_num 99
+python examples/train_tune.py --algo_name=cql --exp_name=halfcheetah --task HalfCheetah-v3 --task_data_type low --task_train_num 100
 
 # Training in D4RL halfcheetah-medium task using default parameters of cql algorithm (D4RL need to be installed)
 python examples/train_d4rl.py --algo_name=cql --exp_name=d4rl-halfcheetah-medium-cql --task d4rl-halfcheetah-medium-v0
@@ -57,7 +57,7 @@ python examples/train_d4rl.py --algo_name=cql --exp_name=d4rl-halfcheetah-medium
 - ​**exp_name**:  Experiment name for easy visualization using aim.
 - ​**task**: Task name, See [neorl](https://agit.ai/Polixir/neorl/wiki/Tasks) for details.
 - ​**task_data_type**: Data level. Each task collects data using low, medium, and high level strategies in [neorl](https://agit.ai/Polixir/neorl).
-- ​**task_train_num**:  Number of training data trajectories. For each task, neorl provides training data for up to 9999 trajectories.
+- ​**task_train_num**:  Number of training data trajectories. For each task, neorl provides training data for up to 10000 trajectories.
 
 
 
