@@ -13,6 +13,7 @@ OfflineRL is a repository for Offline RL (batch reinforcement learning or offlin
 - **BREMEN**: Matsushima, Tatsuya, et al. “Deployment-Efficient Reinforcement Learning via Model-Based Offline Optimization.” International Conference on Learning Representations, 2021. [paper](https://openreview.net/forum?id=3hGNqpI4WS) [code](https://github.com/matsuolab/BREMEN)
 - **COMBO**: Yu, Tianhe, et al. "COMBO: Conservative Offline Model-Based Policy Optimization." arXiv preprint arXiv:2102.08363 (2021). [paper](https://arxiv.org/abs/2102.08363)
 - **MOPO**: Yu, Tianhe, et al. “MOPO: Model-Based Offline Policy Optimization.” Advances in Neural Information Processing Systems, vol. 33, 2020. [paper](https://papers.nips.cc/paper/2020/hash/a322852ce0df73e204b7e67cbbef0d0a-Abstract.html) [code](https://github.com/tianheyu927/mopo)
+- **MAPLE**: Xiong-Hui Chen, et al. "MAPLE: Offline Model-based Adaptable Policy Learning". Advances in Neural Information Processing Systems, vol. 34, 2021. [paper](https://proceedings.neurips.cc/paper/2021/hash/470e7a4f017a5476afb7eeb3f8b96f9b-Abstract.html) [code](https://github.com/xionghuichen/MAPLE)
 
 ## Install Datasets
 ### NeoRL

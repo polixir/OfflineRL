@@ -127,6 +127,12 @@ def get_env_shape(task : str) -> Tuple[int, int]:
     
     return obs_dim, act_dim
 
+def get_env_obs_act_spaces(task : str):
+    env = get_env(task)
+    obs_space = env.observation_space
+    act_space = env.action_space
+    return obs_space, act_space
+
 def get_env_action_range(task : str) -> Tuple[float, float]:
     env = get_env(task)
     act_max = float(env.action_space.high[0])

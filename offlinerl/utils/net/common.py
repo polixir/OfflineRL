@@ -10,12 +10,16 @@ def miniblock(
     inp: int,
     oup: int,
     norm_layer: Optional[Callable[[int], nn.modules.Module]],
+    relu=True
 ) -> List[nn.modules.Module]:
     """Construct a miniblock with given input/output-size and norm layer."""
     ret: List[nn.modules.Module] = [nn.Linear(inp, oup)]
     if norm_layer is not None:
         ret += [norm_layer(oup)]
-    ret += [nn.ReLU(inplace=True)]
+    if relu:
+        ret += [nn.ReLU(inplace=True)]
+    else:
+        ret += [nn.Tanh()]
     return ret
 
 
