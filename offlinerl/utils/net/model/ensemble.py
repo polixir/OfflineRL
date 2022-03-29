@@ -61,17 +61,46 @@ class EnsembleTransition(torch.nn.Module):
         self.backbones = torch.nn.ModuleList(module_list)
 
         self.output_layer = EnsembleLinear(hidden_features, 2 * (obs_dim + self.with_reward), ensemble_size)
-
+        self.obs_mean = None
+        self.obs_std = None
         self.register_parameter('max_logstd', torch.nn.Parameter(torch.ones(obs_dim + self.with_reward) * 1, requires_grad=True))
         self.register_parameter('min_logstd', torch.nn.Parameter(torch.ones(obs_dim + self.with_reward) * -5, requires_grad=True))
 
+    def update_self(self, obs):
+        self.obs_mean = obs.mean(dim=0)
+        self.obs_std = obs.std(dim=0)
+
     def forward(self, obs_action):
-        output = obs_action
+        # Normalization for obs. If 'normaliza', no residual. 
+        # use 'dims' to make forward work both when training and evaluating
+        dims = len(obs_action.shape) - 2
+        if self.obs_mean is not None:
+            if dims:
+                obs_mean = self.obs_mean.unsqueeze(0).expand(obs_action.shape[0], -1).to(obs_action.device)
+                obs_std = self.obs_std.unsqueeze(0).expand(obs_action.shape[0], -1).to(obs_action.device)
+            else:
+                obs_mean = self.obs_mean.to(obs_action.device)
+                obs_std = self.obs_std.to(obs_action.device)
+            if self.mode == 'normalize':
+                batch_size = obs_action.shape[dims]
+                obs, action = torch.split(obs_action, [self.obs_dim, obs_action.shape[-1] - self.obs_dim], dim=-1)
+                if dims:
+                    obs = obs - obs_mean.unsqueeze(dims).expand(-1, batch_size, -1)
+                    obs = obs / (obs_std.unsqueeze(dims).expand(-1, batch_size, -1) + 1e-8)
+                else:
+                    obs = obs - obs_mean.unsqueeze(dims).expand(batch_size, -1)
+                    obs = obs / (obs_std.unsqueeze(dims).expand(batch_size, -1) + 1e-8)
+                output = torch.cat([obs, action], dim=-1)
+            else:
+                output = obs_action
+        else:
+            output = obs_action
         for layer in self.backbones:
             output = self.activation(layer(output))
         mu, logstd = torch.chunk(self.output_layer(output), 2, dim=-1)
         logstd = soft_clamp(logstd, self.min_logstd, self.max_logstd)
-        if self.mode == 'local':
+        # 'local': with residual
+        if self.mode == 'local' or self.mode == 'normalize':
             if self.with_reward:
                 obs, reward = torch.split(mu, [self.obs_dim, 1], dim=-1)
                 obs = obs + obs_action[..., :self.obs_dim]
