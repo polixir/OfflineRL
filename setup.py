@@ -28,6 +28,7 @@ setup(
         "numpy",
         "ray==1.2",
         "aioredis==1.3.1",
+        "aiohttp==3.7.4",
     ],
     
 )
