@@ -16,7 +16,7 @@ class TanhNormal(Distribution):
 
     Note: this is not very numerically stable.
     """
-    def __init__(self, normal_mean, normal_std, epsilon=1e-6):
+    def __init__(self, normal_mean, normal_std, max_action=1, min_action=-1, epsilon=1e-6):
         """
         :param normal_mean: Mean of the normal distribution
         :param normal_std: Std of the normal distribution
@@ -27,13 +27,15 @@ class TanhNormal(Distribution):
         self.normal = Normal(normal_mean, normal_std)
         self.epsilon = epsilon
         self.mode = torch.tanh(normal_mean)
+        self.max_action = max_action
+        self.min_action = min_action
 
     def sample_n(self, n, return_pre_tanh_value=False):
         z = self.normal.sample_n(n)
         if return_pre_tanh_value:
-            return torch.tanh(z), z
+            return (self.max_action-self.min_action)/2*torch.tanh(z)+(self.max_action+self.min_action)/2, z
         else:
-            return torch.tanh(z)
+            return (self.max_action-self.min_action)/2*torch.tanh(z)+(self.max_action+self.min_action)/2
 
     def atanh(self,x):
         one_plus_x = (1 + x).clamp(min=1e-6)
@@ -47,12 +49,20 @@ class TanhNormal(Distribution):
         :param pre_tanh_value: arctanh(x)
         :return:
         """
+        unscaled_value = (2*value - (self.max_action+self.min_action))/(self.max_action - self.min_action)  # assume the actual actions have been transformed
         if pre_tanh_value is None:
-            pre_tanh_value = self.atanh(value)
+            pre_tanh_value = self.atanh(unscaled_value)  # get the raw Gaussian distribution output
 
-        return self.normal.log_prob(pre_tanh_value) - torch.log(
-            1 - value * value + self.epsilon
-        )
+        # ==== previous calculation of tanh log_prob =====
+        # self.normal.log_prob(pre_tanh_value) - torch.log(
+        #     1 - value * value + self.epsilon
+        # )
+        # previous calculation of tanhGaussian log_prob is OK when the action is in (-1,1). To be more general, we need the following revision
+
+        action_scale = (self.max_action-self.min_action)/2.0
+        squashed_action = unscaled_value
+        log_prob = self.normal.log_prob(pre_tanh_value) - torch.log(action_scale * (1 - squashed_action.pow(2)) + self.epsilon)
+        return log_prob
 
     def sample(self, return_pretanh_value=False):
         """
@@ -63,9 +73,9 @@ class TanhNormal(Distribution):
         z = self.normal.sample().detach()
 
         if return_pretanh_value:
-            return torch.tanh(z), z
+            return (self.max_action-self.min_action)/2*torch.tanh(z)+(self.max_action+self.min_action)/2, z
         else:
-            return torch.tanh(z)
+            return (self.max_action-self.min_action)/2*torch.tanh(z)+(self.max_action+self.min_action)/2
     
 
 
@@ -84,9 +94,9 @@ class TanhNormal(Distribution):
         z.requires_grad_()
 
         if return_pretanh_value:
-            return torch.tanh(z), z
+            return (self.max_action-self.min_action)/2*torch.tanh(z)+(self.max_action+self.min_action)/2, z
         else:
-            return torch.tanh(z)
+            return (self.max_action-self.min_action)/2*torch.tanh(z)+(self.max_action+self.min_action)/2
         
 
 class TanhGaussianPolicy(ActorProb, BasePolicy):
@@ -112,9 +122,9 @@ class TanhGaussianPolicy(ActorProb, BasePolicy):
             )
             std = log_std.exp()
         else:
-            shape = [1] * len(mu.shape)
+            shape = [1] * len(mean.shape)
             shape[1] = -1
-            log_std = (self.sigma.view(shape) + torch.zeros_like(mu))
+            log_std = (self.sigma.view(shape) + torch.zeros_like(mean))
             std = log_std.exp()
 
         tanh_normal = TanhNormal(mean, std)
@@ -143,9 +153,9 @@ class TanhGaussianPolicy(ActorProb, BasePolicy):
             )
             std = log_std.exp()
         else:
-            shape = [1] * len(mu.shape)
+            shape = [1] * len(mean.shape)
             shape[1] = -1
-            log_std = (self.sigma.view(shape) + torch.zeros_like(mu))
+            log_std = (self.sigma.view(shape) + torch.zeros_like(mean))
             std = log_std.exp()
         
         return TanhNormal(mean, std)

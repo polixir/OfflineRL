@@ -17,11 +17,11 @@ def setup_seed(seed=1024):
      torch.backends.cudnn.deterministic = True
         
 def select_free_cuda():
-    # 获取每个 GPU 的剩余显存数，并存放到 tmp 文件中
+    # get available CUDA devices, and store it to a tmp file
     tmp_name = str(uuid.uuid1()).replace("-","")
     os.system('nvidia-smi -q -d Memory |grep -A4 GPU|grep Free >'+tmp_name)
     memory_gpu = [int(x.split()[2]) for x in open(tmp_name, 'r').readlines()]
-    os.system('rm '+tmp_name)  # 删除临时生成的 tmp 文件
+    os.system('rm '+tmp_name)  # remove tmp file
     
     return np.argmax(memory_gpu)
 

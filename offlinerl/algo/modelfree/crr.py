@@ -124,7 +124,7 @@ class AlgoTrainer(BaseAlgo):
                 if i % self.args['update_frequency']:
                     self._sync_weight(self.critic_target, self.critic, 1.0)
                     self._sync_weight(self.actor_target, self.actor, 1.0)
-            
+            print("actor_loss: ", actor_loss.item())
             res = callback_fn(self.get_policy())
             
             self.log_res(epoch, res)

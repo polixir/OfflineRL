@@ -8,6 +8,7 @@ from collections import OrderedDict
 from loguru import logger
 from offlinerl.utils.exp import init_exp_logger
 from offlinerl.utils.io import create_dir, download_helper, read_json
+from offlinerl.utils.logger import log_path
 
 
 class BaseAlgo(ABC):
@@ -26,7 +27,14 @@ class BaseAlgo(ABC):
         
         self.repo = repo
         self.exp_logger = init_exp_logger(repo = repo, experiment_name = exp_name)
-        self.index_path = self.exp_logger.repo.index_path
+        if self.exp_logger.repo is not None:  # a naive fix of aim exp_logger.repo is None
+            self.index_path = self.exp_logger.repo.index_path
+        else:
+            repo = os.path.join(log_path(),"./.aim")
+            if not os.path.exists(repo):
+                logger.info('{} dir is not exist, create {}',repo, repo)
+                os.system(str("cd " + os.path.join(repo,"../") + "&& aim init"))
+            self.index_path = repo
         self.models_save_dir = os.path.join(self.index_path, "models")
         self.metric_logs = OrderedDict()
         self.metric_logs_path = os.path.join(self.index_path, "metric_logs.json")

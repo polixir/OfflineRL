@@ -48,7 +48,9 @@ class BufferDataloader(dataloader.DataLoader):
             return self.buffer_loader.__next__()
 
 class Batch:
-    """A batch of named data."""
+    """A batch of named data.
+    Ref: tianshou 0.4.5 (https://www.github.com/thu-ml/tianshou)
+    """
     def __init__(self, *args, **kwargs):
         self.__dict__.update(dict(*args, **kwargs))
 
@@ -197,7 +199,6 @@ class SampleBatch(Batch):
         assert 1 <= batch_size
         
         indices = np.random.randint(0, length, batch_size)
-        
         return self[indices]
 
 def sample(batch : Batch, batch_size : int):

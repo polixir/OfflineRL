@@ -321,6 +321,8 @@ class AlgoTrainer(BaseAlgo):
         self._sync_weight(self.critic2_target, self.critic2, self.args["soft_target_tau"])
         
         self._n_train_steps_total += 1
+        if self._current_epoch % 1000 == 0:
+            logger.info('Pi loss and critic loss: {}, {}, {}'.format(policy_loss.item(), qf1_loss.item(), qf2_loss.item()))
 
         
     def get_model(self):
