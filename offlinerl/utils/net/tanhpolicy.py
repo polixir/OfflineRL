@@ -26,7 +26,6 @@ class TanhNormal(Distribution):
         self.normal_std = normal_std
         self.normal = Normal(normal_mean, normal_std)
         self.epsilon = epsilon
-        self.mode = torch.tanh(normal_mean)
         self.max_action = max_action
         self.min_action = min_action
 
@@ -41,6 +40,10 @@ class TanhNormal(Distribution):
         one_plus_x = (1 + x).clamp(min=1e-6)
         one_minus_x = (1 - x).clamp(min=1e-6)
         return 0.5 * torch.log(one_plus_x / one_minus_x)
+    
+    @property
+    def mode(self):
+        return torch.tanh(self.normal_mean)
 
     def log_prob(self, value, pre_tanh_value=None):
         """
