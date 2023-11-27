@@ -15,6 +15,7 @@ from offlinerl.utils.exp import setup_seed
 
 from offlinerl.utils.data import ModelBuffer
 from offlinerl.utils.net.model.ensemble import EnsembleTransition
+from offlinerl.utils.net.terminal_check import get_termination_fn
 
 def algo_init(args):
     logger.info('Run algo_init function')
@@ -32,6 +33,7 @@ def algo_init(args):
     
     transition = EnsembleTransition(obs_shape, action_shape, args['hidden_layer_size'], args['transition_layers'], args['transition_init_num']).to(args['device'])
     transition_optim = torch.optim.AdamW(transition.parameters(), lr=args['transition_lr'], weight_decay=0.000075)
+    terminal_fn = get_termination_fn(args['task'])
 
     net_a = Net(layer_num=args['hidden_layers'], 
                 state_shape=obs_shape, 
@@ -52,7 +54,7 @@ def algo_init(args):
     critic_optim = torch.optim.Adam([*q1.parameters(), *q2.parameters()], lr=args['actor_lr'])
 
     return {
-        "transition" : {"net" : transition, "opt" : transition_optim},
+        "transition" : {"net" : transition, "opt" : transition_optim, "terminal_fn" : terminal_fn},
         "actor" : {"net" : actor, "opt" : actor_optim},
         "log_alpha" : {"net" : log_alpha, "opt" : alpha_optimizer},
         "critic" : {"net" : [q1, q2], "opt" : critic_optim},
@@ -66,6 +68,7 @@ class AlgoTrainer(BaseAlgo):
 
         self.transition = algo_init['transition']['net']
         self.transition_optim = algo_init['transition']['opt']
+        self.terminal_fn = algo_init['transition']['terminal_fn']
         self.selected_transitions = None
 
         self.actor = algo_init['actor']['net']
@@ -180,17 +183,22 @@ class AlgoTrainer(BaseAlgo):
                     print('average uncertainty:', uncertainty.mean().item())
 
                     penalized_reward = reward - self.args['lam'] * uncertainty
-                    dones = torch.zeros_like(reward)
+                    # dones = torch.zeros_like(reward)
+                    terminals = self.terminal_fn(obs.cpu().numpy(), action.cpu().numpy(), next_obs.cpu().numpy())
+                    nonterm_mask = (~terminals).flatten()
 
                     batch_data = Batch({
                         "obs" : obs.cpu(),
                         "act" : action.cpu(),
                         "rew" : penalized_reward.cpu(),
-                        "done" : dones.cpu(),
+                        "done" : terminals,
                         "obs_next" : next_obs.cpu(),
                     })
 
                     model_buffer.put(batch_data)
+
+                    if nonterm_mask.sum() == 0:
+                        break
 
                     obs = next_obs
 
