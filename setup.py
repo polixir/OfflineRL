@@ -23,7 +23,7 @@ setup(
         "fire",
         "loguru",
         "gym",
-        "sklearn",
+        "scikit-learn",
         "gtimer",
         "numpy",
         "ray==1.2",

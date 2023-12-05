@@ -32,10 +32,11 @@ def test_one_trail_sp_local(env, policy):
     state, done = env.reset(), False
     rewards = 0
     lengths = 0
+    obs_dim = env.observation_space.shape[0]
     act_dim = env.action_space.shape[0]
     
     while not done:
-        state = state
+        state = state.reshape(-1, obs_dim)
         action = policy.get_action(state).reshape(-1, act_dim)
         # print("actions: ", action[0:3,])
         state, reward, done, _ = env.step(action)
