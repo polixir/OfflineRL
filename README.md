@@ -9,6 +9,7 @@ OfflineRL is a repository for Offline RL (batch reinforcement learning or offlin
 - **PLAS**: Zhou, Wenxuan, et al. “PLAS: Latent Action Space for Offline Reinforcement Learning.” ArXiv Preprint ArXiv:2011.07213, 2020.
  [website](https://sites.google.com/view/latent-policy) [paper](https://arxiv.org/abs/2011.07213) [code](https://github.com/Wenxuan-Zhou/PLAS)
 - **BCQ**: Fujimoto, Scott, et al. “Off-Policy Deep Reinforcement Learning without Exploration.” International Conference on Machine Learning, 2018, pp. 2052–2062. [paper](https://arxiv.org/abs/1812.02900) [code](https://github.com/sfujim/BCQ)
+- **PRDC**: Ran, Yuhang, et al. “Policy Regularization with Dataset Constraint for Offline Reinforcement Learning.” International Conference on Machine Learning, 2023, pp. 28701-28717. [paper](https://arxiv.org/abs/2306.06569) [code](https://github.com/LAMDA-RL/PRDC)
 ### Model-based methods
 - **BREMEN**: Matsushima, Tatsuya, et al. “Deployment-Efficient Reinforcement Learning via Model-Based Offline Optimization.” International Conference on Learning Representations, 2021. [paper](https://openreview.net/forum?id=3hGNqpI4WS) [code](https://github.com/matsuolab/BREMEN)
 - **COMBO**: Yu, Tianhe, et al. "COMBO: Conservative Offline Model-Based Policy Optimization." arXiv preprint arXiv:2102.08363 (2021). [paper](https://arxiv.org/abs/2102.08363)

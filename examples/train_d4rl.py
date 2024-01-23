@@ -1,5 +1,4 @@
 import fire
-
 from offlinerl.algo import algo_select
 from offlinerl.data.d4rl import load_d4rl_buffer
 from offlinerl.evaluation import OnlineCallBackFunction
@@ -17,4 +16,5 @@ def run_algo(**kwargs):
 
 if __name__ == "__main__":
     fire.Fire(run_algo)
+
     
